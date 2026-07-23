@@ -590,7 +590,7 @@ export default function App() {
       return fallback;
     };
 
-    const b5_m = getM("B5", "inicio", b5ManualInicio || (manuaisGrafica.E8 ? calcularDiaTrabalho(manuaisGrafica.E8, -3) : ""));
+    const b5_m = getM("B5", "inicio", b5ManualInicio || (manuaisGrafica.E8 ? calcularDiaTrabalho(manuaisGrafica.E8, -4) : ""));
     const b6_m = getM("B6", "inicio", b5_m);
     const b7_m = getM("B7", "inicio", b6_m ? adicionarDiasCalendario(b6_m, 7) : "");
     const b26_m = getM("B26", "inicio", b26ManualInicio || "");
@@ -601,8 +601,7 @@ export default function App() {
     const b14_m = getM("B14", "inicio", b20_m ? calcularDiaTrabalho(b20_m, -30) : "");
     const b13_m = getM("B13", "inicio", b20_m ? (b14_m ? calcularDiaTrabalho(b14_m, -1) : "") : (b15_m ? calcularDiaTrabalho(b15_m, -1) : ""));
     const b21_m = getM("B21", "inicio", b21ManualInicio || t_entrega || "");
-    const b21_has_inicio = !!b21ManualInicio || (datasManuaisExtras["B21"] && !!datasManuaisExtras["B21"]["inicio"] && datasManuaisExtras["B21"]["inicio"] !== "1889-01-01");
-    const b9_m = getM("B9", "inicio", t_entrega ? calcularDiaTrabalho(t_entrega, b21_has_inicio ? -11 : -21) : "");
+    const b9_m = getM("B9", "inicio", b5_m ? calcularDiaTrabalho(b5_m, 11) : "");
     const b9_plus_m = getM("B9+", "fim", b9_m ? calcularDiaTrabalho(b9_m, 4) : "");
     const b19_m = getM("B19", "inicio", t_entrega ? calcularDiaTrabalho(t_entrega, -20) : "");
     const b17_m = getM("B17", "inicio", b19_m ? calcularDiaTrabalho(b19_m, -15) : "");
@@ -728,7 +727,7 @@ export default function App() {
       const b15_base_calc = b15ManualInicio ? obterProximoDiaUtil(b15ManualInicio) : (e8_or_c8 || "1889-01-01");
       const b15_inicio_calc = b15_base_calc;
 
-      const finalB5Inicio = isBlank(e8_or_c8) ? "1889-01-01" : calcularDiaTrabalho(e8_or_c8, -3);
+      const finalB5Inicio = isBlank(e8_or_c8) ? "1889-01-01" : calcularDiaTrabalho(e8_or_c8, -4);
       const finalB5Fim = finalB5Inicio;
       const b6_inicio = isBlank(b5ManualInicio) ? "1889-01-01" : obterProximoDiaUtil(b5ManualInicio);
       const b6_fim = b6_inicio;
@@ -738,17 +737,12 @@ export default function App() {
       const b8_inicio = isBlank(b26_inicio_calc) ? "1889-01-01" : calcularDiaTrabalho(b26_inicio_calc, -33);
       const b8_fim = b8_inicio;
 
-      // Cálculo de B21 (antecipado para uso na nova regra de B9)
+      // Cálculo de B21
       const b21_inicio = desativadosOpcionais.B21 ? "1889-01-01" : obterProximoDiaUtil(b21ManualInicio);
       const b21_fim = t_entrega;
 
-      // Cálculo de B9 utilizando a nova regra baseada no início de B21
-      let b9_inicio_calc = "1889-01-01";
-      if (isBlank(b21_inicio)) {
-        b9_inicio_calc = isBlank(b21_fim) ? "1889-01-01" : calcularDiaTrabalho(b21_fim, -21);
-      } else {
-        b9_inicio_calc = isBlank(b21_fim) ? "1889-01-01" : calcularDiaTrabalho(b21_fim, -11);
-      }
+      // Cálculo de B9: B5 + 11 dias úteis
+      const b9_inicio_calc = isBlank(finalB5Inicio) ? "1889-01-01" : calcularDiaTrabalho(finalB5Inicio, 11);
       const b9_fim_calc = b9_inicio_calc;
 
       const b10_inicio = activeB10;
@@ -821,8 +815,8 @@ export default function App() {
         { celula: "B14", nome: "Envio dos materiais de capacitação antecipados para impressão", formula_inicio: "=DIATRABALHO(C20;-C35;Feriados!$B$2:$B$103)", formula_fim: "=C14", inicio: b14_inicio, fim: b14_fim, isMaterialImpresso: true, isFromGrafica: false },
         { celula: "B15", nome: "Envio dos arquivos para impressão", formula_inicio: "Cópia de E9", formula_fim: "-", inicio: b15_inicio_calc, fim: b15_inicio_calc, isFromGrafica: true },
         { celula: "B16", nome: "Envio dos arquivos para impressão (contratual)", formula_inicio: "=E8 (sem margem)", formula_fim: "=C16", inicio: b16_sem_margem, fim: b16_sem_margem, isFromGrafica: true },
-        { celula: "B5", nome: "Solicitação de leiaute de base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(E4;-3;Feriados!$B:$B)", formula_fim: "=C5", inicio: finalB5Inicio, fim: finalB5Fim, isB5B9: true, isFromGrafica: true },
-        { celula: "B9", nome: "Envio da base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=SE(C21=\"\";DIATRABALHO(D21;-21;Feriados!$B:$B);DIATRABALHO(C21;-11;Feriados!$B:$B))", formula_fim: "=C9", inicio: finalB9Inicio, fim: finalB9Fim, isB5B9: true, isFromGrafica: true },
+        { celula: "B5", nome: "Solicitação de leiaute de base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(E4;-4;Feriados!$B:$B)", formula_fim: "=C5", inicio: finalB5Inicio, fim: finalB5Fim, isB5B9: true, isFromGrafica: true },
+        { celula: "B9", nome: "Envio da base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(B5;11;Feriados!$B:$B)", formula_fim: "=C9", inicio: finalB9Inicio, fim: finalB9Fim, isB5B9: true, isFromGrafica: true },
         { celula: "B9+", nome: "Publicação do Card Acompanhamento da Inscrição e Curso no CAEd Aplicação", formula_inicio: "=D9", formula_fim: "=DIATRABALHO(D9;4;Feriados!$B:$B)", inicio: b9_plus_fim, fim: b9_plus_fim, isB5B9: true, isFromGrafica: true },
         { celula: "B17", nome: "Envio dos cadernos para produção em braile", formula_inicio: "=DIATRABALHO(C19;-15;Feriados!$B$2:$B$103)", formula_fim: "=C17", inicio: b17_inicio, fim: b17_fim, isFromGrafica: true },
         { celula: "B18", nome: "Envio dos arquivos de testes adaptados (AD e/ou libras) para Consórcio", formula_inicio: "Preenchimento Opcional", formula_fim: "-", inicio: activeB18, fim: activeB18, manualB18: true, isFromGrafica: false },
@@ -1494,7 +1488,7 @@ export default function App() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <label className="block text-[10px] font-bold text-slate-700">
-                    RECOLHIMENTO POLOS:
+                    INÍCIO RECOLHIMENTO POLOS:
                   </label>
                   <label className="inline-flex items-center gap-1 cursor-pointer">
                     <input
