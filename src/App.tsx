@@ -435,8 +435,8 @@ export default function App() {
     const E12_inicio = valPrincipalInicio("E12", E12_fim);
 
     // 1) CAEd gera DVs
-    const C10_val = valPrincipal("C10", refEntrega);
-    const c9 = calcularDiaTrabalho(C10_val, -prazoAjustado);
+    const b21_val = valPrincipal("B21", b21ManualInicio || refEntrega);
+    const c9 = calcularDiaTrabalho(b21_val, -prazoAjustado);
     const C9_val = valPrincipal("C9", c9);
     const c8 = calcularDiaTrabalho(C9_val, -1);
     const C8_val = valPrincipal("C8", c8);
@@ -486,13 +486,12 @@ export default function App() {
       entregaPolos: refEntrega
     });
 
-  }, [dataEntrega, prazoContratual, prazoComFator, feriados]);
+  }, [dataEntrega, prazoContratual, prazoComFator, feriados, b21ManualInicio]);
   
 
   const obterDatasManuaisCaed = () => {
-    const c10_manual = (datasManuaisPrincipal["C10"] && datasManuaisPrincipal["C10"] !== "1889-01-01") ? datasManuaisPrincipal["C10"] : calculosCaed.entregaPolos;
-    
-    const c9_calc = c10_manual ? calcularDiaTrabalho(c10_manual, -calculosCaed.prazoAjustado) : "";
+    const b21_anchor = b21ManualInicio || (datasManuaisExtras["B21"] && datasManuaisExtras["B21"].inicio) || calculosCaed.entregaPolos;
+    const c9_calc = b21_anchor ? calcularDiaTrabalho(b21_anchor, -calculosCaed.prazoAjustado) : "";
     const c9_manual = (datasManuaisPrincipal["C9"] && datasManuaisPrincipal["C9"] !== "1889-01-01") ? datasManuaisPrincipal["C9"] : c9_calc;
 
     const c8_calc = c9_manual ? calcularDiaTrabalho(c9_manual, -1) : "";
@@ -511,7 +510,6 @@ export default function App() {
     const c5_manual = (datasManuaisPrincipal["C5"] && datasManuaisPrincipal["C5"] !== "1889-01-01") ? datasManuaisPrincipal["C5"] : c5_calc;
 
     return {
-      C10: c10_manual,
       C9: c9_manual,
       C8: c8_manual,
       C7: c7_manual,
@@ -581,7 +579,7 @@ export default function App() {
 
   const obterDatasManuaisExtras = () => {
     const manuaisGrafica = obterDatasManuaisGrafica();
-    const t_entrega = datasManuaisPrincipal["E12"] || datasManuaisPrincipal["C10"] || calculosGrafica.entregaPolos || calculosCaed.entregaPolos;
+    const t_entrega = datasManuaisPrincipal["E12"] || b21ManualInicio || (datasManuaisExtras["B21"] && datasManuaisExtras["B21"].inicio) || calculosGrafica.entregaPolos || calculosCaed.entregaPolos;
 
     const getM = (cel: string, field: "inicio" | "fim", fallback: string) => {
       if (datasManuaisExtras[cel] && datasManuaisExtras[cel][field] && datasManuaisExtras[cel][field] !== "1889-01-01") {
@@ -590,13 +588,13 @@ export default function App() {
       return fallback;
     };
 
-    const b5_m = getM("B5", "inicio", b5ManualInicio || (manuaisGrafica.E8 ? calcularDiaTrabalho(manuaisGrafica.E8, -4) : ""));
+    const b15_m = getM("B15", "inicio", b15ManualInicio || manuaisGrafica.E8 || "");
+    const b5_m = getM("B5", "inicio", b5ManualInicio || (b15_m ? calcularDiaTrabalho(b15_m, -4) : ""));
     const b6_m = getM("B6", "inicio", b5_m);
     const b7_m = getM("B7", "inicio", b6_m ? adicionarDiasCalendario(b6_m, 7) : "");
     const b26_m = getM("B26", "inicio", b26ManualInicio || "");
     const b8_m = getM("B8", "inicio", b26_m ? calcularDiaTrabalho(b26_m, -33) : "");
     const b10_m = getM("B10", "inicio", b10ManualInicio || "");
-    const b15_m = getM("B15", "inicio", b15ManualInicio || manuaisGrafica.E8 || "");
     const b20_m = getM("B20", "inicio", b20ManualInicio || "");
     const b14_m = getM("B14", "inicio", b20_m ? calcularDiaTrabalho(b20_m, -30) : "");
     const b13_m = getM("B13", "inicio", b20_m ? (b14_m ? calcularDiaTrabalho(b14_m, -1) : "") : (b15_m ? calcularDiaTrabalho(b15_m, -1) : ""));
@@ -692,7 +690,7 @@ export default function App() {
     const manuaisGrafica = obterDatasManuaisGrafica();
 
     const t_entrega = isCaed
-      ? (datasManuaisPrincipal["C10"] || manuaisCaed.C10 || calculosCaed.entregaPolos || "1889-01-01")
+      ? (b21ManualInicio || (datasManuaisExtras["B21"] && datasManuaisExtras["B21"].inicio) || calculosCaed.entregaPolos || "1889-01-01")
       : (datasManuaisPrincipal["E12"] || manuaisGrafica.E12 || calculosGrafica.entregaPolos || "1889-01-01");
 
     const e8_or_c8 = isCaed
@@ -727,7 +725,7 @@ export default function App() {
       const b15_base_calc = b15ManualInicio ? obterProximoDiaUtil(b15ManualInicio) : (e8_or_c8 || "1889-01-01");
       const b15_inicio_calc = b15_base_calc;
 
-      const finalB5Inicio = isBlank(e8_or_c8) ? "1889-01-01" : calcularDiaTrabalho(e8_or_c8, -4);
+      const finalB5Inicio = isBlank(b15_inicio_calc) ? "1889-01-01" : calcularDiaTrabalho(b15_inicio_calc, -4);
       const finalB5Fim = finalB5Inicio;
       const b6_inicio = isBlank(b5ManualInicio) ? "1889-01-01" : obterProximoDiaUtil(b5ManualInicio);
       const b6_fim = b6_inicio;
@@ -810,12 +808,12 @@ export default function App() {
         { celula: "B6", nome: "Envio do leiaute para coleta/atualização de usuários", formula_inicio: "=Sidebar", formula_fim: "=C6", inicio: b6_inicio, fim: b6_fim, isFromGrafica: false },
         { celula: "B7", nome: "Envio da planilha de usuários", formula_inicio: "=C6+7", formula_fim: "-", inicio: b7_inicio, fim: b7_fim, isFromGrafica: false },
         { celula: "B8", nome: "Recebimento do checklist de pessoa física", formula_inicio: "=DIATRABALHO(C26;-33;Feriados!$B:$B)", formula_fim: "=C8", inicio: b8_inicio, fim: b8_fim, isB8: true, isFromGrafica: false, dependenteB26: true },
-        { celula: "B10", nome: "Análise das inconsistências da base institutional", formula_inicio: "Preenchimento Opcional", formula_fim: "=C10", inicio: b10_inicio, fim: b10_fim, manualB10: true, isFromGrafica: false },
+        { celula: "B10", nome: "Análise das inconsistências da base institutional", formula_inicio: "Preenchimento Opcional", formula_fim: "=B21", inicio: b10_inicio, fim: b10_fim, manualB10: true, isFromGrafica: false },
         { celula: "B13", nome: "Disponibilização dos materiais de capacitação", formula_inicio: "=SE(C20=\"\";DIATRABALHO(C15;-1;Feriados!$B$2:$B$103);DIATRABALHO(C14;-1;Feriados!$B$2:$B$103))", formula_fim: "=C13", inicio: b13_inicio, fim: b13_fim, isFromGrafica: true },
         { celula: "B14", nome: "Envio dos materiais de capacitação antecipados para impressão", formula_inicio: "=DIATRABALHO(C20;-C35;Feriados!$B$2:$B$103)", formula_fim: "=C14", inicio: b14_inicio, fim: b14_fim, isMaterialImpresso: true, isFromGrafica: false },
         { celula: "B15", nome: "Envio dos arquivos para impressão", formula_inicio: "Cópia de E9", formula_fim: "-", inicio: b15_inicio_calc, fim: b15_inicio_calc, isFromGrafica: true },
         { celula: "B16", nome: "Envio dos arquivos para impressão (contratual)", formula_inicio: "=E8 (sem margem)", formula_fim: "=C16", inicio: b16_sem_margem, fim: b16_sem_margem, isFromGrafica: true },
-        { celula: "B5", nome: "Solicitação de leiaute de base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(E4;-4;Feriados!$B:$B)", formula_fim: "=C5", inicio: finalB5Inicio, fim: finalB5Fim, isB5B9: true, isFromGrafica: true },
+        { celula: "B5", nome: "Solicitação de leiaute de base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(B15;-4;Feriados!$B:$B)", formula_fim: "=C5", inicio: finalB5Inicio, fim: finalB5Fim, isB5B9: true, isFromGrafica: true },
         { celula: "B9", nome: "Envio da base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(B5;11;Feriados!$B:$B)", formula_fim: "=C9", inicio: finalB9Inicio, fim: finalB9Fim, isB5B9: true, isFromGrafica: true },
         { celula: "B9+", nome: "Publicação do Card Acompanhamento da Inscrição e Curso no CAEd Aplicação", formula_inicio: "=D9", formula_fim: "=DIATRABALHO(D9;4;Feriados!$B:$B)", inicio: b9_plus_fim, fim: b9_plus_fim, isB5B9: true, isFromGrafica: true },
         { celula: "B17", nome: "Envio dos cadernos para produção em braile", formula_inicio: "=DIATRABALHO(C19;-15;Feriados!$B$2:$B$103)", formula_fim: "=C17", inicio: b17_inicio, fim: b17_fim, isFromGrafica: true },
@@ -1431,7 +1429,7 @@ export default function App() {
                       className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3.5 w-3.5 cursor-pointer shrink-0"
                     />
                     <div className="min-w-0 flex flex-col justify-center">
-                      <span className="block text-[10px] font-bold text-slate-800 leading-tight">MATERIAIS IMPRESSOS</span>
+                      <span className="block text-[10px] font-bold text-slate-800 leading-tight">MANUAIS IMPRESSOS</span>
                       <span className="block text-[8px] text-slate-500 mt-0.5 leading-none">
                         Ativa B14 e B20
                       </span>
@@ -1648,18 +1646,28 @@ export default function App() {
                     <>
                       {activeScenario === 'caed' && (
                         <div className="space-y-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="border border-[#C9CACC] p-4 bg-white rounded-lg border-l-4 border-l-[#FFF200] shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center font-sans">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full min-h-[112px]">
+                              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans leading-tight">
                                 Limite Recebimento da Base
                               </div>
-                              <div className="text-lg font-bold mt-1 text-[#3F48CC] font-sans">{formatarDataBR(calculosCaed.c1_limiteBaseDestaque)}</div>
+                              <div className="text-2xl font-bold mt-2 text-[#3F48CC] font-sans">{formatarDataBR(calculosCaed.c1_limiteBaseDestaque)}</div>
                             </div>
-                            <div className={`border border-[#C9CACC] p-4 bg-white rounded-lg border-l-4 border-l-[#FFF200] shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-opacity duration-200 ${!possuiEscrita ? 'opacity-40 bg-slate-50 border-slate-200 select-none' : ''}`}>
-                              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center font-sans">
+                            <div className={`border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full min-h-[112px] transition-opacity duration-200 ${!possuiEscrita ? 'opacity-40 bg-slate-50 border-slate-200 select-none' : ''}`}>
+                              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans leading-tight">
                                 Disponibilização de Escrita
                               </div>
-                              <div className={`text-lg font-bold mt-1 font-sans ${!possuiEscrita ? 'text-slate-400' : 'text-[#3F48CC]'}`}>{formatarDataBR(calculosCaed.c2_dispEscritaDestaque)}</div>
+                              <div className={`text-2xl font-bold mt-2 font-sans ${!possuiEscrita ? 'text-slate-400' : 'text-[#3F48CC]'}`}>{formatarDataBR(calculosCaed.c2_dispEscritaDestaque)}</div>
+                            </div>
+                            <div className="border border-[#C9CACC] border-l-[5px] border-l-[#3F48CC] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-start h-full min-h-[112px]">
+                              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans mb-1.5 leading-tight">
+                                Observação
+                              </div>
+                              <div className="text-xs text-slate-700 font-sans space-y-1 leading-snug">
+                                <p><span className="font-bold text-slate-800">Disponibilização:</span> <span className="font-normal text-slate-600">Interno.</span></p>
+                                <p><span className="font-bold text-slate-800">Publicação:</span> <span className="font-normal text-slate-600">Plataforma.</span></p>
+                                <p><span className="font-bold text-slate-800">Envio:</span> <span className="font-normal text-slate-600">E-mail, FTP ou outros meios.</span></p>
+                              </div>
                             </div>
                           </div>
 
@@ -1749,7 +1757,7 @@ export default function App() {
                                       const dataVal = calculosCaed[cel.toLowerCase()];
                                       return (
                                         <tr key={cel} className={`hover:bg-slate-50 transition-colors ${isRowDisabled ? 'opacity-40 bg-slate-50 select-none' : ''}`}>
-                                          <td className="py-2 text-center text-[10px] font-bold text-[#3F48CC] font-sans w-12">{cel}</td>
+                                          <td className="py-2 text-center text-[10px] font-bold text-[#2E6F40] font-sans w-12">{cel}</td>
                                           <td className={`py-1.5 font-sans font-medium ${isRowDisabled ? 'text-slate-400' : 'text-slate-500'}`}>
                                             {cel === "C4" && "Recebimento de base institucional (inegociável, sem gordura)"}
                                             {cel === "C5" && "Disponibilização dos itens de escrita antecipados"}
@@ -1797,41 +1805,12 @@ export default function App() {
                                               {cel === "C6" && "DIATRABALHO(C8;-2;Feriados!$B:$B)"}
                                               {cel === "C7" && "DIATRABALHO(C9;-2;Feriados!$B:$B)"}
                                               {cel === "C8" && "DIATRABALHO(C9;-1;Feriados!$B:$B)"}
-                                              {cel === "C9" && "DIATRABALHO(C10;-C12;Feriados!$B:$B)"}
+                                              {cel === "C9" && "DIATRABALHO(B21;-C12;Feriados!$B:$B)"}
                                             </td>
                                           )}
                                         </tr>
                                       );
                                     })}
-                                    <tr className="bg-slate-50 border-t border-[#C9CACC] font-bold text-slate-855 font-sans">
-                                      <td className="py-2 text-center text-[10px] font-bold text-[#3F48CC] font-sans w-12">C10</td>
-                                      <td className="py-1.5 text-slate-900 font-medium font-sans">Entrega dos materiais nos polos até:</td>
-                                      {!ocultarCalculosPrincipal && (
-                                        <>
-                                          <td className="py-1.5 text-right font-sans">
-                                            <span className={`block font-sans ${modoEdicaoPrincipal ? 'text-slate-500 font-normal text-xs' : 'font-bold text-[#3F48CC] text-xs sm:text-sm'}`}>
-                                              {formatarDataBR(calculosCaed.entregaPolos)}
-                                            </span>
-                                          </td>
-                                          <td className="py-1.5 text-right font-sans">
-                                            <span className={`block font-sans ${modoEdicaoPrincipal ? 'text-slate-500 font-normal text-xs' : 'font-bold text-[#3F48CC] text-xs sm:text-sm'}`}>
-                                              {formatarDataBR(calculosCaed.entregaPolos)}
-                                            </span>
-                                          </td>
-                                        </>
-                                      )}
-                                      {modoEdicaoPrincipal && (
-                                        <>
-                                          <td className="py-1 text-right font-sans">
-                                            <span className="text-slate-400 mr-8">-</span>
-                                          </td>
-                                          <td className="py-1 text-right font-sans">
-                                            <CampoData value={datasManuaisPrincipal["C10"] || obterDatasManuaisCaed()["C10"] || ""} onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, ["C10"]: val })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans" />
-                                          </td>
-                                        </>
-                                      )}
-                                      {!ocultarFormulas && <td className="py-2.5 font-normal text-slate-400 text-right font-sans">Inserção Manual</td>}
-                                    </tr>
 
                                     {/* B-rows */}
                                     {obterDatasExtrasCalculadas().map((row) => {
