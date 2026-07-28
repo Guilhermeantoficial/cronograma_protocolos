@@ -168,8 +168,8 @@ export function exportToPdf({
     ["Solicitação de Leiaute da Base Institucional", formatDate(b5ManualInicio)],
     
     [{ content: activeScenario === "caed" ? "5. FLUXO PRINCIPAL DE PRAZOS CAED (QUADROS)" : "5. FLUXO PRINCIPAL DE PRAZOS GRÁFICOS (QUADROS)", colSpan: 2, styles: { fillColor: [242, 242, 242], fontStyle: 'bold' } }],
-    ["Limite Recebimento da Base", formatDate(activeScenario === "caed" ? calculosCaed.c1_limiteBaseDestaque : calculosGrafica.e1_limiteBaseDestaque)],
-    ["Disponibilização de Escrita", possuiEscrita ? formatDate(activeScenario === "caed" ? calculosCaed.c2_dispEscritaDestaque : calculosGrafica.e2_dispEscritaDestaque) : { content: "-", styles: { textColor: [160, 174, 192] } }]
+    ["Recebimento de base com gordura", formatDate(activeScenario === "caed" ? calculosCaed.c1_limiteBaseDestaque : calculosGrafica.e1_limiteBaseDestaque)],
+    ["Disponibilização dos itens de escrita antecipados", possuiEscrita ? formatDate(activeScenario === "caed" ? calculosCaed.c2_dispEscritaDestaque : calculosGrafica.e2_dispEscritaDestaque) : { content: "-", styles: { textColor: [160, 174, 192] } }]
   ];
 
   autoTable(doc, {
@@ -370,10 +370,9 @@ export function exportToPdf({
     const caedBody = [
       ["C4", "Recebimento de base institucional (inegociável, sem gordura)", formatDate(calculosCaed.c4), modoEdicaoPrincipal ? formatDate(datasManuaisPrincipal["C4"]) : null],
       ["C5", "Disponibilização dos itens de escrita antecipados", formatDate(calculosCaed.c5), modoEdicaoPrincipal ? formatDate(datasManuaisPrincipal["C5"]) : null],
-      ["C6", "Envio dos arquivos de dados variáveis (DVs)", formatDate(calculosCaed.c6), modoEdicaoPrincipal ? formatDate(datasManuaisPrincipal["C6"]) : null],
+      ["C6", "Geração e validação dos arquivos de dados variáveis (DVs)", formatDate(calculosCaed.c6), modoEdicaoPrincipal ? formatDate(datasManuaisPrincipal["C6"]) : null],
       ["C7", "Disponibilização dos cadernos de teste", formatDate(calculosCaed.c7), modoEdicaoPrincipal ? formatDate(datasManuaisPrincipal["C7"]) : null],
       ["C8", "Homologação dos arquivos de DVs", formatDate(calculosCaed.c8), modoEdicaoPrincipal ? formatDate(datasManuaisPrincipal["C8"]) : null],
-      ["C9", "Envio dos arquivos para impressão", formatDate(calculosCaed.c9), modoEdicaoPrincipal ? formatDate(datasManuaisPrincipal["C9"]) : null],
       ["C10", "Entrega dos materiais nos polos até:", formatDate(calculosCaed.entregaPolos), modoEdicaoPrincipal ? formatDate(datasManuaisPrincipal["C10"]) : null]
     ].map(row => {
       const id = row[0];

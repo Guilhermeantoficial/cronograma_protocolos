@@ -436,11 +436,11 @@ export default function App() {
 
     // 1) CAEd gera DVs
     const b21_val = valPrincipal("B21", b21ManualInicio || refEntrega);
-    const c9 = calcularDiaTrabalho(b21_val, -prazoAjustado);
-    const C9_val = valPrincipal("C9", c9);
-    const c8 = calcularDiaTrabalho(C9_val, -1);
+    const b15_val = valPrincipal("B15", b15ManualInicio || (datasManuaisExtras["B15"] && datasManuaisExtras["B15"].inicio) || calcularDiaTrabalho(b21_val, -prazoAjustado));
+    const c8 = calcularDiaTrabalho(b15_val, -1);
     const C8_val = valPrincipal("C8", c8);
-    const c7 = calcularDiaTrabalho(C9_val, -2);
+    const c8_inicio = calcularDiaTrabalho(C8_val, -1);
+    const c7 = calcularDiaTrabalho(b15_val, -2);
     const C7_val = valPrincipal("C7", c7);
     const c6 = calcularDiaTrabalho(C8_val, -2);
     const C6_val = valPrincipal("C6", c6);
@@ -452,7 +452,11 @@ export default function App() {
     const c2_dispEscritaDestaque = calcularDiaTrabalho(c1_limiteBaseDestaque, 3);
 
     setCalculosCaed({
-      c4, c5, c6, c7, c8, c9,
+      c4, c5, c6, c7, c8, c8_inicio, b15: b15_val,
+      c4_inicio: c4,
+      c5_inicio: c5,
+      c6_inicio: c6,
+      c7_inicio: c7,
       c1_limiteBaseDestaque,
       c2_dispEscritaDestaque,
       prazoOriginal: numericPrazo,
@@ -486,18 +490,20 @@ export default function App() {
       entregaPolos: refEntrega
     });
 
-  }, [dataEntrega, prazoContratual, prazoComFator, feriados, b21ManualInicio]);
+  }, [dataEntrega, prazoContratual, prazoComFator, feriados, b21ManualInicio, b15ManualInicio]);
   
 
   const obterDatasManuaisCaed = () => {
     const b21_anchor = b21ManualInicio || (datasManuaisExtras["B21"] && datasManuaisExtras["B21"].inicio) || calculosCaed.entregaPolos;
-    const c9_calc = b21_anchor ? calcularDiaTrabalho(b21_anchor, -calculosCaed.prazoAjustado) : "";
-    const c9_manual = (datasManuaisPrincipal["C9"] && datasManuaisPrincipal["C9"] !== "1889-01-01") ? datasManuaisPrincipal["C9"] : c9_calc;
+    const b15_calc = b21_anchor ? calcularDiaTrabalho(b21_anchor, -calculosCaed.prazoAjustado) : "";
+    const b15_manual = (b15ManualInicio || (datasManuaisExtras["B15"] && datasManuaisExtras["B15"].inicio)) ? (b15ManualInicio || (datasManuaisExtras["B15"] && datasManuaisExtras["B15"].inicio)) : b15_calc;
 
-    const c8_calc = c9_manual ? calcularDiaTrabalho(c9_manual, -1) : "";
+    const c8_calc = b15_manual ? calcularDiaTrabalho(b15_manual, -1) : "";
     const c8_manual = (datasManuaisPrincipal["C8"] && datasManuaisPrincipal["C8"] !== "1889-01-01") ? datasManuaisPrincipal["C8"] : c8_calc;
+    const c8_inicio_calc = c8_manual ? calcularDiaTrabalho(c8_manual, -1) : "";
+    const c8_inicio_manual = (datasManuaisPrincipal["C8_inicio"] && datasManuaisPrincipal["C8_inicio"] !== "1889-01-01") ? datasManuaisPrincipal["C8_inicio"] : c8_inicio_calc;
 
-    const c7_calc = c9_manual ? calcularDiaTrabalho(c9_manual, -2) : "";
+    const c7_calc = b15_manual ? calcularDiaTrabalho(b15_manual, -2) : "";
     const c7_manual = (datasManuaisPrincipal["C7"] && datasManuaisPrincipal["C7"] !== "1889-01-01") ? datasManuaisPrincipal["C7"] : c7_calc;
 
     const c6_calc = c8_manual ? calcularDiaTrabalho(c8_manual, -2) : "";
@@ -510,8 +516,8 @@ export default function App() {
     const c5_manual = (datasManuaisPrincipal["C5"] && datasManuaisPrincipal["C5"] !== "1889-01-01") ? datasManuaisPrincipal["C5"] : c5_calc;
 
     return {
-      C9: c9_manual,
       C8: c8_manual,
+      C8_inicio: c8_inicio_manual,
       C7: c7_manual,
       C6: c6_manual,
       C4: c4_manual,
@@ -1563,8 +1569,19 @@ export default function App() {
         <header className="bg-white border-t-4 border-[#FFF200] border-b border-[#C9CACC] py-6 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 border border-[#FFF200] px-2.5 py-0.5 text-[11px] font-black tracking-wider text-slate-950 rounded bg-[#FFF200] font-sans">
-                Fundação CAEd
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="inline-flex items-center gap-2 border border-[#FFF200] px-2.5 py-0.5 text-[11px] font-black tracking-wider text-slate-950 rounded bg-[#FFF200] font-sans">
+                  Fundação CAEd
+                </div>
+                <div className="inline-flex items-center gap-2 border border-[#3F48CC] px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-white rounded bg-[#3F48CC] font-sans">
+                  Última atualização: {(() => {
+                    const h = new Date();
+                    const d = String(h.getDate()).padStart(2, '0');
+                    const m = String(h.getMonth() + 1).padStart(2, '0');
+                    const y = h.getFullYear();
+                    return `${d}/${m}/${y}`;
+                  })()}
+                </div>
               </div>
               <h1 className="text-xl md:text-2xl font-light uppercase tracking-wide text-slate-950 mt-2 font-sans">
                 Planejamento e Protocolos <span className="font-semibold text-slate-700">| Programação de Cronograma</span>
@@ -1649,13 +1666,13 @@ export default function App() {
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full min-h-[112px]">
                               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans leading-tight">
-                                Limite Recebimento da Base
+                                Recebimento de base com gordura
                               </div>
                               <div className="text-2xl font-bold mt-2 text-[#3F48CC] font-sans">{formatarDataBR(calculosCaed.c1_limiteBaseDestaque)}</div>
                             </div>
                             <div className={`border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full min-h-[112px] transition-opacity duration-200 ${!possuiEscrita ? 'opacity-40 bg-slate-50 border-slate-200 select-none' : ''}`}>
                               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans leading-tight">
-                                Disponibilização de Escrita
+                                Disponibilização dos itens de escrita antecipados
                               </div>
                               <div className={`text-2xl font-bold mt-2 font-sans ${!possuiEscrita ? 'text-slate-400' : 'text-[#3F48CC]'}`}>{formatarDataBR(calculosCaed.c2_dispEscritaDestaque)}</div>
                             </div>
@@ -1752,30 +1769,32 @@ export default function App() {
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-[#C9CACC] text-slate-600 font-medium">
-                                    {["C4", "C5", "C6", "C7", "C8", "C9"].map((cel) => {
+                                    {["C4", "C5", "C6", "C7", "C8"].map((cel) => {
                                       const isRowDisabled = cel === "C5" && !possuiEscrita;
-                                      const dataVal = calculosCaed[cel.toLowerCase()];
+                                      const dataValFim = calculosCaed[cel.toLowerCase()];
+                                      const dataValInicio = cel === "C8" ? (calculosCaed.c8_inicio || dataValFim) : dataValFim;
+                                      const isEndEqual = dataValInicio === dataValFim;
+                                      const endColorClass = isEndEqual ? 'text-slate-900' : 'text-[#3F48CC]';
                                       return (
                                         <tr key={cel} className={`hover:bg-slate-50 transition-colors ${isRowDisabled ? 'opacity-40 bg-slate-50 select-none' : ''}`}>
                                           <td className="py-2 text-center text-[10px] font-bold text-[#2E6F40] font-sans w-12">{cel}</td>
                                           <td className={`py-1.5 font-sans font-medium ${isRowDisabled ? 'text-slate-400' : 'text-slate-500'}`}>
                                             {cel === "C4" && "Recebimento de base institucional (inegociável, sem gordura)"}
                                             {cel === "C5" && "Disponibilização dos itens de escrita antecipados"}
-                                            {cel === "C6" && "Envio dos arquivos de dados variáveis (DVs)"}
+                                            {cel === "C6" && "Geração e validação dos arquivos de dados variáveis (DVs)"}
                                             {cel === "C7" && "Disponibilização dos cadernos de teste"}
                                             {cel === "C8" && "Homologação dos arquivos de DVs"}
-                                            {cel === "C9" && "Envio dos arquivos para impressão"}
                                           </td>
                                           {!ocultarCalculosPrincipal && (
                                             <>
                                               <td className="py-1.5 text-right font-sans">
                                                 <span className={`block font-sans ${modoEdicaoPrincipal ? 'text-slate-500 font-normal text-xs' : isRowDisabled ? 'text-slate-400 font-semibold' : 'font-bold text-slate-900 text-xs sm:text-sm'}`}>
-                                                  {isRowDisabled ? "-" : formatarDataBR(dataVal)}
+                                                  {isRowDisabled ? "-" : formatarDataBR(dataValInicio)}
                                                 </span>
                                               </td>
                                               <td className="py-1.5 text-right font-sans">
-                                                <span className={`block font-sans ${modoEdicaoPrincipal ? 'text-slate-500 font-normal text-xs' : isRowDisabled ? 'text-slate-400 font-semibold' : 'font-bold text-slate-900 text-xs sm:text-sm'}`}>
-                                                  {isRowDisabled ? "-" : formatarDataBR(dataVal)}
+                                                <span className={`block font-sans ${modoEdicaoPrincipal ? 'text-slate-500 font-normal text-xs' : isRowDisabled ? 'text-slate-400 font-semibold' : `font-bold ${endColorClass} text-xs sm:text-sm`}`}>
+                                                  {isRowDisabled ? "-" : formatarDataBR(dataValFim)}
                                                 </span>
                                               </td>
                                             </>
@@ -1783,7 +1802,15 @@ export default function App() {
                                           {modoEdicaoPrincipal && (
                                             <>
                                               <td className="py-1 text-right font-sans">
-                                                <span className="text-slate-400 mr-8">-</span>
+                                                {isRowDisabled || cel !== "C8" ? (
+                                                  <span className="text-slate-400 mr-8">-</span>
+                                                ) : (
+                                                  <CampoData
+                                                    value={datasManuaisPrincipal["C8_inicio"] || obterDatasManuaisCaed().C8_inicio || ""}
+                                                    onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, "C8_inicio": val })}
+                                                    className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans"
+                                                  />
+                                                )}
                                               </td>
                                               <td className="py-1 text-right font-sans">
                                                 {isRowDisabled ? (
@@ -1803,9 +1830,8 @@ export default function App() {
                                               {cel === "C4" && "DIATRABALHO(C6;-10;Feriados!$B:$B)"}
                                               {cel === "C5" && "DIATRABALHO(C4;3;Feriados!$B:$B)"}
                                               {cel === "C6" && "DIATRABALHO(C8;-2;Feriados!$B:$B)"}
-                                              {cel === "C7" && "DIATRABALHO(C9;-2;Feriados!$B:$B)"}
-                                              {cel === "C8" && "DIATRABALHO(C9;-1;Feriados!$B:$B)"}
-                                              {cel === "C9" && "DIATRABALHO(B21;-C12;Feriados!$B:$B)"}
+                                              {cel === "C7" && "DIATRABALHO(B15;-2;Feriados!$B:$B)"}
+                                              {cel === "C8" && "DIATRABALHO(B15;-1;Feriados!$B:$B)"}
                                             </td>
                                           )}
                                         </tr>
