@@ -202,8 +202,8 @@ export function exportToXlsb({
     ["Solicitação de Leiaute da Base Institucional", formatDate(b5ManualInicio)],
     ["", ""],
     [activeScenario === "caed" ? "5. FLUXO PRINCIPAL DE PRAZOS CAED (QUADROS)" : "5. FLUXO PRINCIPAL DE PRAZOS GRÁFICOS (QUADROS)", ""],
-    ["Limite Recebimento da Base", formatDate(activeScenario === "caed" ? calculosCaed.c1_limiteBaseDestaque : calculosGrafica.e1_limiteBaseDestaque)],
-    ["Disponibilização de Escrita", possuiEscrita ? formatDate(activeScenario === "caed" ? calculosCaed.c2_dispEscritaDestaque : calculosGrafica.e2_dispEscritaDestaque) : "N/A (Não possui escrita)"]
+    ["Recebimento de base com gordura", formatDate(activeScenario === "caed" ? calculosCaed.c1_limiteBaseDestaque : calculosGrafica.e1_limiteBaseDestaque)],
+    ["Disponibilização dos itens de escrita antecipados", possuiEscrita ? formatDate(activeScenario === "caed" ? calculosCaed.c2_dispEscritaDestaque : calculosGrafica.e2_dispEscritaDestaque) : "N/A (Não possui escrita)"]
   ];
 
   const wsResumo = XLSX.utils.aoa_to_sheet(sidebarData);
@@ -386,14 +386,6 @@ export function exportToXlsb({
         ...(modoEdicaoPrincipal 
           ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["C8"])] : [formatDate(calculosCaed.c8), formatDate(datasManuaisPrincipal["C8"])])
           : [formatDate(calculosCaed.c8)]
-        )
-      ],
-      [
-        "C9",
-        "ENTREGA DOS POLOS",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["C9"])] : [formatDate(calculosCaed.c9), formatDate(datasManuaisPrincipal["C9"])])
-          : [formatDate(calculosCaed.c9)]
         )
       ],
       [
