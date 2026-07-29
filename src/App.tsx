@@ -3,6 +3,11 @@ import { Calendar, Trash2, Plus, Info, RefreshCw, Eye, EyeOff, Check, ChevronDow
 import { exportToXlsb } from './utils/exportXlsb';
 import { exportToPdf } from './utils/exportPdf';
 
+/**
+ * Atualizar este valor sempre quando uma nova versão for disponibilizada em produção.
+ */
+const DATA_ULTIMA_VERSAO = '29/07/2026';
+
 // Feriados padrão nacionais e regionais (CAEd) - Adaptados para 2025/2026
 const FERIADOS_PADRAO = [
   // 2025
@@ -1574,13 +1579,7 @@ export default function App() {
                   Fundação CAEd
                 </div>
                 <div className="inline-flex items-center gap-2 border border-[#3F48CC] px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-white rounded bg-[#3F48CC] font-sans">
-                  Última atualização: {(() => {
-                    const h = new Date();
-                    const d = String(h.getDate()).padStart(2, '0');
-                    const m = String(h.getMonth() + 1).padStart(2, '0');
-                    const y = h.getFullYear();
-                    return `${d}/${m}/${y}`;
-                  })()}
+                  Última atualização: {DATA_ULTIMA_VERSAO}
                 </div>
               </div>
               <h1 className="text-xl md:text-2xl font-light uppercase tracking-wide text-slate-950 mt-2 font-sans">
