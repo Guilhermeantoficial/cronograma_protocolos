@@ -6,7 +6,7 @@ import { exportToPdf } from './utils/exportPdf';
 /**
  * Atualizar este valor sempre quando uma nova versão for disponibilizada em produção.
  */
-const DATA_ULTIMA_VERSAO = '29/07/2026';
+const DATA_ULTIMA_VERSAO = '31/07/2026';
 
 // Feriados padrão nacionais e regionais (CAEd) - Adaptados para 2025/2026
 const FERIADOS_PADRAO = [
@@ -607,7 +607,7 @@ export default function App() {
     const b8_m = getM("B8", "inicio", b26_m ? calcularDiaTrabalho(b26_m, -33) : "");
     const b10_m = getM("B10", "inicio", b10ManualInicio || "");
     const b20_m = getM("B20", "inicio", b20ManualInicio || "");
-    const b14_m = getM("B14", "inicio", b20_m ? calcularDiaTrabalho(b20_m, -30) : "");
+    const b14_m = getM("B14", "inicio", b20_m ? calcularDiaTrabalho(b20_m, -12) : "");
     const b13_m = getM("B13", "inicio", b20_m ? (b14_m ? calcularDiaTrabalho(b14_m, -1) : "") : (b15_m ? calcularDiaTrabalho(b15_m, -1) : ""));
     const b21_m = getM("B21", "inicio", b21ManualInicio || t_entrega || "");
     const b9_m = getM("B9", "inicio", b5_m ? calcularDiaTrabalho(b5_m, 11) : "");
@@ -768,7 +768,7 @@ export default function App() {
       const b12_inicio = desativadosOpcionais.B12 ? "1889-01-01" : b12_inicio_raw;
       const b12_fim = desativadosOpcionais.B12 ? "1889-01-01" : b12_fim_raw;
       
-      const b14_inicio = isBlank(activeB20) ? "1889-01-01" : calcularDiaTrabalho(activeB20, -30);
+      const b14_inicio = isBlank(activeB20) ? "1889-01-01" : calcularDiaTrabalho(activeB20, -12);
       const b14_fim = b14_inicio;
 
       let b13_inicio = "1889-01-01";
@@ -821,7 +821,7 @@ export default function App() {
         { celula: "B8", nome: "Recebimento do checklist de pessoa física", formula_inicio: "=DIATRABALHO(C26;-33;Feriados!$B:$B)", formula_fim: "=C8", inicio: b8_inicio, fim: b8_fim, isB8: true, isFromGrafica: false, dependenteB26: true },
         { celula: "B10", nome: "Análise das inconsistências da base institutional", formula_inicio: "Preenchimento Opcional", formula_fim: "=B21", inicio: b10_inicio, fim: b10_fim, manualB10: true, isFromGrafica: false },
         { celula: "B13", nome: "Disponibilização dos materiais de capacitação", formula_inicio: "=SE(C20=\"\";DIATRABALHO(C15;-1;Feriados!$B$2:$B$103);DIATRABALHO(C14;-1;Feriados!$B$2:$B$103))", formula_fim: "=C13", inicio: b13_inicio, fim: b13_fim, isFromGrafica: true },
-        { celula: "B14", nome: "Envio dos materiais de capacitação antecipados para impressão", formula_inicio: "=DIATRABALHO(C20;-C35;Feriados!$B$2:$B$103)", formula_fim: "=C14", inicio: b14_inicio, fim: b14_fim, isMaterialImpresso: true, isFromGrafica: false },
+        { celula: "B14", nome: "Envio dos materiais de capacitação antecipados para impressão", formula_inicio: "=DIATRABALHO(C20;-12;Feriados!$B2:$B103)", formula_fim: "=C14", inicio: b14_inicio, fim: b14_fim, isMaterialImpresso: true, isFromGrafica: false },
         { celula: "B15", nome: "Envio dos arquivos para impressão", formula_inicio: "Cópia de E9", formula_fim: "-", inicio: b15_inicio_calc, fim: b15_inicio_calc, isFromGrafica: true },
         { celula: "B16", nome: "Envio dos arquivos para impressão (contratual)", formula_inicio: "=E8 (sem margem)", formula_fim: "=C16", inicio: b16_sem_margem, fim: b16_sem_margem, isFromGrafica: true },
         { celula: "B5", nome: "Solicitação de leiaute de base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(B15;-4;Feriados!$B:$B)", formula_fim: "=C5", inicio: finalB5Inicio, fim: finalB5Fim, isB5B9: true, isFromGrafica: true },
@@ -904,7 +904,7 @@ export default function App() {
       const isDeactivated = desativadosOpcionais[row.celula];
       return (
         <div className="flex items-center justify-end gap-2.5">
-          <label className="inline-flex items-center gap-1 cursor-pointer w-[60px] shrink-0" title="Marque para habilitar ou inativar a etapa">
+          <label className="inline-flex items-center gap-1 cursor-pointer w-[60px] shrink-0 opacity-100 select-none" title="Marque para habilitar ou inativar a etapa">
             <input
               type="checkbox"
               checked={!isDeactivated}
@@ -914,10 +914,9 @@ export default function App() {
                   [row.celula]: !e.target.checked
                 }));
               }}
-              className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3 w-3 cursor-pointer"
+              className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3 w-3 cursor-pointer opacity-100"
             />
-            <span className="text-[7.5px] uppercase tracking-wide text-slate-700 font-bold select-none font-sans">
-              {!isDeactivated ? "Ativo" : "Inativo"}
+            <span className={`text-[7.5px] uppercase tracking-wide font-bold select-none font-sans opacity-100 ${isDeactivated ? 'text-slate-900 font-black' : 'text-slate-700'}`}>
             </span>
           </label>
           <div className={`text-right w-[110px] shrink-0 ${isDeactivated ? 'opacity-35' : ''}`}>
@@ -949,7 +948,7 @@ export default function App() {
 
       return (
         <div className="flex items-center justify-end gap-2.5">
-          <label className="inline-flex items-center gap-1 cursor-pointer w-[60px] shrink-0" title="Marque para habilitar ou inativar o campo">
+          <label className="inline-flex items-center gap-1 cursor-pointer w-[60px] shrink-0 opacity-100 select-none" title="Marque para habilitar ou inativar o campo">
             <input
               type="checkbox"
               checked={!isDeactivated}
@@ -959,9 +958,9 @@ export default function App() {
                   [row.celula]: !e.target.checked
                 }));
               }}
-              className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3 w-3 cursor-pointer"
+              className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3 w-3 cursor-pointer opacity-100"
             />
-            <span className="text-[7.5px] uppercase tracking-wide text-slate-700 font-bold select-none font-sans">
+            <span className={`text-[7.5px] uppercase tracking-wide font-bold select-none font-sans opacity-100 ${isDeactivated ? 'text-slate-900 font-black' : 'text-slate-700'}`}>
               {!isDeactivated ? "Ativo" : "Inativo"}
             </span>
           </label>
@@ -1499,7 +1498,7 @@ export default function App() {
                   <label className="block text-[10px] font-bold text-slate-700">
                     INÍCIO RECOLHIMENTO POLOS:
                   </label>
-                  <label className="inline-flex items-center gap-1 cursor-pointer">
+                  <label className="inline-flex items-center gap-1 cursor-pointer opacity-100 select-none">
                     <input
                       type="checkbox"
                       checked={!desativadosOpcionais.B26}
@@ -1509,9 +1508,9 @@ export default function App() {
                           B26: !e.target.checked
                         }));
                       }}
-                      className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3 w-3 cursor-pointer"
+                      className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3 w-3 cursor-pointer opacity-100"
                     />
-                    <span className="text-[7.5px] uppercase tracking-wide text-slate-700 font-bold select-none">
+                    <span className={`text-[7.5px] uppercase tracking-wide font-bold select-none opacity-100 ${desativadosOpcionais.B26 ? 'text-slate-900 font-black' : 'text-slate-700'}`}>
                       {!desativadosOpcionais.B26 ? "Ativo" : "Inativo"}
                     </span>
                   </label>
