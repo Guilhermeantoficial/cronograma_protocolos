@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx-js-style';
+import { COD_ORDEM_MAP, getCodOrdemNumeric } from './codOrdem';
 
 interface ExportParams {
   codSubprograma: string;
@@ -7,6 +8,11 @@ interface ExportParams {
   activeScenario: string;
   dataEntrega: string;
   prazoContratual: string | number;
+  prazoComFator?: string | number;
+  prazoContratualOriginal?: string | number;
+  prazoComFatorOriginal?: string | number;
+  prazoContratualEditado?: string | number;
+  prazoComFatorEditado?: string | number;
   constaCaedAplicacao: boolean;
   possuiEscrita: boolean;
   possuiMaterialImpresso?: boolean;
@@ -24,6 +30,26 @@ interface ExportParams {
   modoEdicaoExtras?: boolean;
   ocultarCalculosPrincipal?: boolean;
   ocultarCalculosExtras?: boolean;
+  observacoes?: string;
+}
+
+function extractFormattingFromHtml(raw: string) {
+  if (!raw) return { text: '', color: '333333', bold: false, italic: false, underline: false };
+
+  let text = raw;
+  if (/<[a-z][\s\S]*>/i.test(raw)) {
+    text = raw
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '• ')
+      .replace(/<[^>]+>/g, '');
+  }
+
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+
+  return { text, color: '333333', bold: false, italic: false, underline: false };
 }
 
 export function exportToXlsb({
@@ -33,6 +59,11 @@ export function exportToXlsb({
   activeScenario,
   dataEntrega,
   prazoContratual,
+  prazoComFator,
+  prazoContratualOriginal,
+  prazoComFatorOriginal,
+  prazoContratualEditado,
+  prazoComFatorEditado,
   constaCaedAplicacao,
   possuiEscrita,
   possuiMaterialImpresso = true,
@@ -49,7 +80,8 @@ export function exportToXlsb({
   modoEdicaoPrincipal = false,
   modoEdicaoExtras = false,
   ocultarCalculosPrincipal = false,
-  ocultarCalculosExtras = false
+  ocultarCalculosExtras = false,
+  observacoes = ''
 }: ExportParams) {
   
   // Local date formatting function
@@ -176,24 +208,49 @@ export function exportToXlsb({
   };
 
   // --- SHEET 1: PARÂMETROS E FLUXO PRINCIPAL ---
-  const sidebarData = [
+  const displayPrazoOriginal = (prazoContratualOriginal !== undefined && prazoContratualOriginal !== '') 
+    ? prazoContratualOriginal 
+    : prazoContratual;
+
+  const displayFatorOriginal = (prazoComFatorOriginal !== undefined && prazoComFatorOriginal !== '') 
+    ? prazoComFatorOriginal 
+    : (prazoComFator || (prazoContratual ? Math.ceil(Number(prazoContratual) * 1.25) : ''));
+
+  const displayPrazoEditado = (prazoContratualEditado !== undefined && prazoContratualEditado !== '') 
+    ? `${prazoContratualEditado} dias` 
+    : "-";
+
+  const displayFatorEditado = (prazoComFatorEditado !== undefined && prazoComFatorEditado !== '') 
+    ? `${prazoComFatorEditado} dias` 
+    : "-";
+
+  const hasFatorEditado = prazoComFatorEditado !== undefined && prazoComFatorEditado !== '' && displayFatorEditado !== "-";
+
+  const sidebarData: any[] = [
     ["PARÂMETROS E CONFIGURAÇÕES DO CRONOGRAMA", ""],
     ["", ""],
     ["1. CONFIGURAÇÕES GERAIS", ""],
     ["Código do Subprograma", codSubprograma],
     ["Nome do Subprograma", nomeSubprograma || ""],
     ["Tipo de Avaliação do Subprograma", evaluationType === "somativa" ? "Somativa" : "Formativa"],
-    ["Cenário Operacional (Geração de DVs)", activeScenario === "caed" ? "CAEd gera DVs" : "Gráfica gera DVs"],
+    ["Geração de dados variáveis", activeScenario === "caed" ? "CAEd gera DVs" : "Gráfica gera DVs"],
     ["", ""],
-    ["2. PARÂMETROS INICIAIS (ÂNCORAS)", ""],
-    ["Entrega nos Polos (Anchor)", formatDate(dataEntrega)],
-    ["Prazo Contratual (Dias)", prazoContratual ? `${prazoContratual} dias` : "-"],
-    ["Prazo Contratual Ajustado (Fator 1.25)", prazoContratual ? `${Math.ceil(Number(prazoContratual) * 1.25)} dias` : "-"],
+    ["PARÂMETROS INICIAIS", ""],
+    ["Entrega nos Polos", formatDate(dataEntrega)],
+    ["Prazo Gráfico (Dias)", displayPrazoOriginal ? `${displayPrazoOriginal} dias` : "-"],
+    ["Prazo Protocolos (Fator 1.25)", displayFatorOriginal ? `${displayFatorOriginal} dias` : "-"]
+  ];
+
+  if (hasFatorEditado) {
+    sidebarData.push(["Prazo Protocolos (Fator 1.25) - Editado", displayFatorEditado]);
+  }
+
+  sidebarData.push(
     ["", ""],
     ["3. CRITÉRIOS DE HABILITAÇÃO", ""],
-    ["CAEd APLICAÇÃO (EP05) (Ativa B5 e B9)", constaCaedAplicacao ? "Habilitado (Sim)" : "Desabilitado (Não)"],
-    ["ESCRITA (Ativa B8)", possuiEscrita ? "Habilitado (Sim)" : "Desabilitado (Não)"],
-    ["MATERIAIS IMPRESSOS (Ativa B14 e B20)", possuiMaterialImpresso ? "Habilitado (Sim)" : "Desabilitado (Não)"],
+    ["CAEd Aplicação (EP05) (Ativa B5 e B9)", constaCaedAplicacao ? "Habilitado" : "Desabilitado"],
+    ["Escrita (Ativa B8)", possuiEscrita ? "Habilitado" : "Desabilitado"],
+    ["Manuais impressos (Ativa B14 e B20)", possuiMaterialImpresso ? "Habilitado" : "Desabilitado"],
     ["", ""],
     ["4. CAMPOS DE PREENCHIMENTO DO SIDEBAR", ""],
     ["Aplicação dos Cadernos (Início)", formatDate(b23ManualInicio)],
@@ -201,313 +258,339 @@ export function exportToXlsb({
     ["Recolhimento nos Polos (Início)", desativadosOpcionais.B26 ? "Inativo" : formatDate(b26ManualInicio)],
     ["Solicitação de Leiaute da Base Institucional", formatDate(b5ManualInicio)],
     ["", ""],
-    [activeScenario === "caed" ? "5. FLUXO PRINCIPAL DE PRAZOS CAED (QUADROS)" : "5. FLUXO PRINCIPAL DE PRAZOS GRÁFICOS (QUADROS)", ""],
+    [activeScenario === "caed" ? "5. FLUXO PRINCIPAL DE PRAZOS CAEd (QUADROS)" : "5. FLUXO PRINCIPAL DE PRAZOS GRÁFICOS (QUADROS)", ""],
     ["Recebimento de base com gordura", formatDate(activeScenario === "caed" ? calculosCaed.c1_limiteBaseDestaque : calculosGrafica.e1_limiteBaseDestaque)],
     ["Disponibilização dos itens de escrita antecipados", possuiEscrita ? formatDate(activeScenario === "caed" ? calculosCaed.c2_dispEscritaDestaque : calculosGrafica.e2_dispEscritaDestaque) : "N/A (Não possui escrita)"]
-  ];
+  );
 
   const wsResumo = XLSX.utils.aoa_to_sheet(sidebarData);
   applyStylesToSheet(wsResumo, {
     sectionTitles: [
       "1. CONFIGURAÇÕES GERAIS",
-      "2. PARÂMETROS INICIAIS (ÂNCORAS)",
+      "PARÂMETROS INICIAIS",
       "3. CRITÉRIOS DE HABILITAÇÃO",
       "4. CAMPOS DE PREENCHIMENTO DO SIDEBAR",
       "5. FLUXO PRINCIPAL DE PRAZOS GRÁFICOS (QUADROS)",
-      "5. FLUXO PRINCIPAL DE PRAZOS CAED (QUADROS)"
+      "5. FLUXO PRINCIPAL DE PRAZOS CAEd (QUADROS)"
     ],
     colWidths: [45, 35]
   });
   XLSX.utils.book_append_sheet(wb, wsResumo, "Parâmetros e Fluxo Principal");
 
-  // --- SHEET 2: TABELA GRÁFICA GERA DVS ---
+  // --- SHEET 2: TABELA GRÁFICA E DATAS EXTRAS ---
   if (activeScenario === "grafica") {
-    const headerGrafica = ["Ref", "ETAPA (Atividade)", "FÓRMULA / LÓGICA DE CÁLCULO"];
-    if (modoEdicaoPrincipal) {
-      if (ocultarCalculosPrincipal) {
-        headerGrafica.push("DATA MANUAL");
-      } else {
-        headerGrafica.push("DATA PROGRAMADA", "DATA MANUAL");
-      }
-    } else {
-      headerGrafica.push("DATA PROGRAMADA");
+    const headerGrafica = ["CÓD.", "ETAPA", "DATA INÍCIO", "DATA FIM"];
+    if (modoEdicaoPrincipal || modoEdicaoExtras) {
+      headerGrafica.push("DATA INÍCIO MANUAL", "DATA FIM MANUAL");
     }
 
     const rowsGrafica = [
-      ["TABELA GRÁFICA GERA DVS", "", "", "", ""],
-      ["", "", "", "", ""],
-      headerGrafica,
-      [
-        "E4",
-        "Prazo limite para recebimento de base (com 10 dias úteis para OPED)",
-        "DIATRABALHO(E6;-10;Feriados!$B:$B)",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["E4"])] : [formatDate(calculosGrafica.e4), formatDate(datasManuaisPrincipal["E4"])])
-          : [formatDate(calculosGrafica.e4)]
-        )
-      ],
-      [
-        "E6",
-        "OPED | Envio do arquivo de dados (.csv)",
-        "DIATRABALHO(E9;-4;Feriados!$B:$B)",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["E6"])] : [formatDate(calculosGrafica.e6), formatDate(datasManuaisPrincipal["E6"])])
-          : [formatDate(calculosGrafica.e6)]
-        )
-      ],
-      [
-        "E7",
-        "ITENS | Disponibilização dos Cadernos p/ Logística",
-        "DIATRABALHO(E8;-2;Feriados!$B:$B)",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["E7"])] : [formatDate(calculosGrafica.e7), formatDate(datasManuaisPrincipal["E7"])])
-          : [formatDate(calculosGrafica.e7)]
-        )
-      ],
-      [
-        "E8",
-        "LOG | Envio de arquivos p/ gráfica",
-        "Cópia de E9",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["E8"])] : [formatDate(calculosGrafica.e8), formatDate(datasManuaisPrincipal["E8"])])
-          : [formatDate(calculosGrafica.e8)]
-        )
-      ],
-      [
-        "E9",
-        "GRÁFICA | Envio dos arquivos p/ OPED",
-        "DIATRABALHO(E10;-2;Feriados!$B:$B)",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["E9"])] : [formatDate(calculosGrafica.e9), formatDate(datasManuaisPrincipal["E9"])])
-          : [formatDate(calculosGrafica.e9)]
-        )
-      ],
-      [
-        "E10",
-        "OPED | Fim da validação",
-        "DIATRABALHO(E11;-2;Feriados!$B:$B)",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["E10"])] : [formatDate(calculosGrafica.e10), formatDate(datasManuaisPrincipal["E10"])])
-          : [formatDate(calculosGrafica.e10)]
-        )
-      ],
-      [
-        "E11",
-        "CAMPO | Fim da homologação",
-        "DIATRABALHO(E12;-E14+4;Feriados!$B:$B)",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["E11"])] : [formatDate(calculosGrafica.e11), formatDate(datasManuaisPrincipal["E11"])])
-          : [formatDate(calculosGrafica.e11)]
-        )
-      ],
-      [
-        "E12",
-        "ENTREGA NOS POLOS ATÉ:",
-        "Inserção Manual",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["E12"])] : [formatDate(calculosGrafica.entregaPolos), formatDate(datasManuaisPrincipal["E12"])])
-          : [formatDate(calculosGrafica.entregaPolos)]
-        )
-      ]
+      ["TABELA GRÁFICA E DATAS EXTRAS", "", "", "", "", ""],
+      ["", "", "", "", "", ""],
+      headerGrafica
     ];
 
-    const wsGrafica = XLSX.utils.aoa_to_sheet(rowsGrafica);
-    const colWidthsGrafica = [8, 55, 35];
-    if (modoEdicaoPrincipal) {
-      if (ocultarCalculosPrincipal) {
-        colWidthsGrafica.push(20);
+    const eCells = ["E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12"];
+    const allGraficaItems = [
+      ...eCells.map(cel => ({ isE: true as const, celula: cel, rowData: null as any })),
+      ...datasExtras.map(row => ({ isE: false as const, celula: row.celula, rowData: row }))
+    ].sort((a, b) => getCodOrdemNumeric(a.celula) - getCodOrdemNumeric(b.celula));
+
+    allGraficaItems.forEach(item => {
+      if (item.isE) {
+        const cel = item.celula;
+        const isRowDisabled = cel === "E5" && !possuiEscrita;
+        const celLower = cel.toLowerCase();
+        
+        const displayInicio = isRowDisabled ? "-" : formatDate(calculosGrafica[`${celLower}_inicio`]);
+        const displayFim = isRowDisabled ? "-" : formatDate(calculosGrafica[celLower]);
+
+        const manualInicio = isRowDisabled ? "-" : formatDate(datasManuaisPrincipal[`${cel}_inicio`] || calculosGrafica[`${celLower}_inicio`]);
+        const manualFim = isRowDisabled ? "-" : formatDate(datasManuaisPrincipal[cel] || calculosGrafica[celLower]);
+
+        const rowName = 
+          cel === "E4" ? "Recebimento de base institucional (inegociável, sem gordura)" :
+          cel === "E5" ? "Disponibilização dos itens de escrita antecipados" :
+          cel === "E6" ? "Envio do arquivo de dados (.csv)" :
+          cel === "E7" ? "Disponibilização dos cadernos de testes" :
+          cel === "E8" ? "Envio dos arquivos para impressão" :
+          cel === "E9" ? "Envio dos arquivos de dados variáveis (DVs)" :
+          cel === "E10" ? "Validação dos arquivos de DVs" :
+          cel === "E11" ? "Homologação dos arquivos de DVs" :
+          cel === "E12" ? "Entrega dos materiais nos polos" : "";
+
+        const codOrdem = COD_ORDEM_MAP[cel] || "-";
+        const rowCells = [codOrdem, rowName, displayInicio, displayFim];
+        if (modoEdicaoPrincipal || modoEdicaoExtras) {
+          rowCells.push(manualInicio, manualFim);
+        }
+        rowsGrafica.push(rowCells);
       } else {
-        colWidthsGrafica.push(20, 20);
+        const row = item.rowData;
+        let isRowDisabled = false;
+        if (evaluationType === 'somativa' || evaluationType === 'formativa') {
+          if (row.isB5B9 && !constaCaedAplicacao) {
+            isRowDisabled = true;
+          }
+          if (row.isB8 && !possuiEscrita) {
+            isRowDisabled = true;
+          }
+          if (row.isMaterialImpresso && !possuiMaterialImpresso) {
+            isRowDisabled = true;
+          }
+        }
+
+        const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
+        const dependenteInativoB20 = row.celula === "B14" && (!possuiMaterialImpresso || desativadosOpcionais.B20);
+        const isFieldDeactivated = (row.celula !== 'B21' && desativadosOpcionais[row.celula]) || dependenteInativoB26 || dependenteInativoB20;
+
+        let displayInicio = "-";
+        let displayFim = "-";
+
+        if (!isRowDisabled && !isFieldDeactivated) {
+          displayInicio = formatDate(row.inicio);
+          displayFim = row.fim && row.fim !== "-" ? formatDate(row.fim) : "-";
+        } else {
+          displayInicio = "Inativo / Desabilitado";
+          displayFim = "Inativo / Desabilitado";
+        }
+
+        let manualInicio = "-";
+        let manualFim = "-";
+        if (!isRowDisabled && !isFieldDeactivated) {
+          manualInicio = (datasManuaisExtras[row.celula]?.inicio || row.inicio) ? formatDate(datasManuaisExtras[row.celula]?.inicio || row.inicio) : "-";
+          manualFim = (row.fim && row.fim !== "-") ? formatDate(datasManuaisExtras[row.celula]?.fim || row.fim) : "-";
+        } else {
+          manualInicio = "Inativo / Desabilitado";
+          manualFim = "Inativo / Desabilitado";
+        }
+
+        const codOrdem = COD_ORDEM_MAP[row.celula] || "-";
+        const rowCells = [codOrdem, row.nome, displayInicio, displayFim];
+        if (modoEdicaoPrincipal || modoEdicaoExtras) {
+          rowCells.push(manualInicio, manualFim);
+        }
+        rowsGrafica.push(rowCells);
       }
-    } else {
-      colWidthsGrafica.push(20);
+    });
+
+    // Anotações Complementares (sem cabeçalho de tabela, com estrutura em branco se vazio e reproduzindo formatações)
+    const notesFormatGrafica = extractFormattingFromHtml(observacoes || '');
+    rowsGrafica.push(["", "", "", "", "", ""]);
+    rowsGrafica.push(["ANOTAÇÕES COMPLEMENTARES", "", "", "", "", ""]);
+    const notesRowIdxGrafica = rowsGrafica.length;
+    rowsGrafica.push([notesFormatGrafica.text || "", "", "", "", "", ""]);
+
+    const wsGrafica = XLSX.utils.aoa_to_sheet(rowsGrafica);
+    const colWidthsGrafica = [12, 55, 20, 20];
+    if (modoEdicaoPrincipal || modoEdicaoExtras) {
+      colWidthsGrafica.push(20, 20);
     }
 
     applyStylesToSheet(wsGrafica, {
       headerRowIndex: 2,
       headerBg: "D8E4BC", // VERDE OLIVA, ÊNFASE 3, MAIS CLARO 60%
+      sectionTitles: [
+        "TABELA GRÁFICA E DATAS EXTRAS",
+        "ANOTAÇÕES COMPLEMENTARES"
+      ],
       colWidths: colWidthsGrafica
     });
-    XLSX.utils.book_append_sheet(wb, wsGrafica, "Tabela Gráfica gera DVs");
+
+    const cellRefGrafica = XLSX.utils.encode_cell({ r: notesRowIdxGrafica, c: 0 });
+    if (wsGrafica[cellRefGrafica]) {
+      wsGrafica[cellRefGrafica].s = {
+        font: {
+          name: "Arial",
+          sz: 10,
+          color: { rgb: notesFormatGrafica.color },
+          bold: notesFormatGrafica.bold,
+          italic: notesFormatGrafica.italic,
+          underline: notesFormatGrafica.underline
+        },
+        alignment: { vertical: "top", horizontal: "left", wrapText: true },
+        border: {
+          top: { style: 'dotted', color: { rgb: 'C9CACC' } },
+          bottom: { style: 'dotted', color: { rgb: 'C9CACC' } },
+          left: { style: 'dotted', color: { rgb: 'C9CACC' } },
+          right: { style: 'dotted', color: { rgb: 'C9CACC' } }
+        }
+      };
+    }
+    XLSX.utils.book_append_sheet(wb, wsGrafica, "Tabela Gráfica e Datas Extras");
   }
 
-  // --- SHEET 3: TABELA CAED GERA DVS ---
+  // --- SHEET 3: TABELA CAEd E DATAS EXTRAS ---
   if (activeScenario === "caed") {
-    const headerCaed = ["Ref", "ETAPA (Atividade)"];
-    if (modoEdicaoPrincipal) {
-      if (ocultarCalculosPrincipal) {
-        headerCaed.push("DATA MANUAL");
-      } else {
-        headerCaed.push("DATA PROGRAMADA", "DATA MANUAL");
-      }
-    } else {
-      headerCaed.push("DATA PROGRAMADA");
+    const headerCaed = ["CÓD.", "ETAPA", "DATA INÍCIO", "DATA FIM"];
+    if (modoEdicaoPrincipal || modoEdicaoExtras) {
+      headerCaed.push("DATA INÍCIO MANUAL", "DATA FIM MANUAL");
     }
 
     const rowsCaed = [
-      ["TABELA CAED GERA DVS", "", "", ""],
-      ["", "", "", ""],
-      headerCaed,
-      [
-        "C4",
-        "Prazo limite para recebimento de base (com 10 dias úteis para OPED)",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["C4"])] : [formatDate(calculosCaed.c4), formatDate(datasManuaisPrincipal["C4"])])
-          : [formatDate(calculosCaed.c4)]
-        )
-      ],
-      [
-        "C5",
-        "ITENS | Disponibilização da Escrita p/ OPED (se houver)",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["C5"])] : [formatDate(calculosCaed.c5), formatDate(datasManuaisPrincipal["C5"])])
-          : [formatDate(calculosCaed.c5)]
-        )
-      ],
-      [
-        "C6",
-        "OPED | Envio do arquivo de dados (.csv)",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["C6"])] : [formatDate(calculosCaed.c6), formatDate(datasManuaisPrincipal["C6"])])
-          : [formatDate(calculosCaed.c6)]
-        )
-      ],
-      [
-        "C7",
-        "OPED | Fim da validação",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["C7"])] : [formatDate(calculosCaed.c7), formatDate(datasManuaisPrincipal["C7"])])
-          : [formatDate(calculosCaed.c7)]
-        )
-      ],
-      [
-        "C8",
-        "CAMPO | Fim da homologação",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["C8"])] : [formatDate(calculosCaed.c8), formatDate(datasManuaisPrincipal["C8"])])
-          : [formatDate(calculosCaed.c8)]
-        )
-      ],
-      [
-        "C10",
-        "ENTREGA NOS POLOS ATÉ:",
-        ...(modoEdicaoPrincipal 
-          ? (ocultarCalculosPrincipal ? [formatDate(datasManuaisPrincipal["C10"])] : [formatDate(calculosCaed.entregaPolos), formatDate(datasManuaisPrincipal["C10"])])
-          : [formatDate(calculosCaed.entregaPolos)]
-        )
-      ]
+      ["TABELA CAEd E DATAS EXTRAS", "", "", "", "", ""],
+      ["", "", "", "", "", ""],
+      headerCaed
     ];
-    const wsCaed = XLSX.utils.aoa_to_sheet(rowsCaed);
-    const colWidthsCaed = [8, 55];
-    if (modoEdicaoPrincipal) {
-      if (ocultarCalculosPrincipal) {
-        colWidthsCaed.push(20);
+
+    const cCells = ["C4", "C5", "C6", "C7", "C8", "C10"];
+    const allCaedItems = [
+      ...cCells.map(cel => ({ isC: true as const, celula: cel, rowData: null as any })),
+      ...datasExtras.map(row => ({ isC: false as const, celula: row.celula, rowData: row }))
+    ].sort((a, b) => getCodOrdemNumeric(a.celula) - getCodOrdemNumeric(b.celula));
+
+    allCaedItems.forEach(item => {
+      if (item.isC) {
+        const cel = item.celula;
+        const isRowDisabled = cel === "C5" && !possuiEscrita;
+        
+        let displayInicio = "-";
+        let displayFim = "-";
+        let manualInicio = "-";
+        let manualFim = "-";
+
+        if (!isRowDisabled) {
+          if (cel === "C4") {
+            displayInicio = formatDate(calculosCaed.c4);
+            displayFim = formatDate(calculosCaed.c4);
+            manualInicio = formatDate(datasManuaisPrincipal["C4"] || calculosCaed.c4);
+            manualFim = formatDate(datasManuaisPrincipal["C4"] || calculosCaed.c4);
+          } else if (cel === "C5") {
+            displayInicio = formatDate(calculosCaed.c5);
+            displayFim = formatDate(calculosCaed.c5);
+            manualInicio = formatDate(datasManuaisPrincipal["C5"] || calculosCaed.c5);
+            manualFim = formatDate(datasManuaisPrincipal["C5"] || calculosCaed.c5);
+          } else if (cel === "C6") {
+            displayInicio = formatDate(calculosCaed.c6);
+            displayFim = formatDate(calculosCaed.c6);
+            manualInicio = formatDate(datasManuaisPrincipal["C6"] || calculosCaed.c6);
+            manualFim = formatDate(datasManuaisPrincipal["C6"] || calculosCaed.c6);
+          } else if (cel === "C7") {
+            displayInicio = formatDate(calculosCaed.c7);
+            displayFim = formatDate(calculosCaed.c7);
+            manualInicio = formatDate(datasManuaisPrincipal["C7"] || calculosCaed.c7);
+            manualFim = formatDate(datasManuaisPrincipal["C7"] || calculosCaed.c7);
+          } else if (cel === "C8") {
+            displayInicio = formatDate(calculosCaed.c8_inicio || calculosCaed.c8);
+            displayFim = formatDate(calculosCaed.c8);
+            manualInicio = formatDate(datasManuaisPrincipal["C8_inicio"] || calculosCaed.c8_inicio || calculosCaed.c8);
+            manualFim = formatDate(datasManuaisPrincipal["C8"] || calculosCaed.c8);
+          } else if (cel === "C10") {
+            displayInicio = formatDate(calculosCaed.entregaPolos);
+            displayFim = formatDate(calculosCaed.entregaPolos);
+            manualInicio = formatDate(datasManuaisPrincipal["C10"] || calculosCaed.entregaPolos);
+            manualFim = formatDate(datasManuaisPrincipal["C10"] || calculosCaed.entregaPolos);
+          }
+        }
+
+        const rowName = 
+          cel === "C4" ? "Recebimento de base institucional (inegociável, sem gordura)" :
+          cel === "C5" ? "Disponibilização dos itens de escrita antecipados" :
+          cel === "C6" ? "Geração e validação dos arquivos de dados variáveis (DVs)" :
+          cel === "C7" ? "Disponibilização dos cadernos de testes" :
+          cel === "C8" ? "Homologação dos arquivos de DVs" :
+          cel === "C10" ? "Entrega dos materiais nos polos até:" : "";
+
+        const codOrdem = COD_ORDEM_MAP[cel] || "-";
+        const rowCells = [codOrdem, rowName, displayInicio, displayFim];
+        if (modoEdicaoPrincipal || modoEdicaoExtras) {
+          rowCells.push(manualInicio, manualFim);
+        }
+        rowsCaed.push(rowCells);
       } else {
-        colWidthsCaed.push(20, 20);
+        const row = item.rowData;
+        let isRowDisabled = false;
+        if (evaluationType === 'somativa' || evaluationType === 'formativa') {
+          if (row.isB5B9 && !constaCaedAplicacao) {
+            isRowDisabled = true;
+          }
+          if (row.isB8 && !possuiEscrita) {
+            isRowDisabled = true;
+          }
+          if (row.isMaterialImpresso && !possuiMaterialImpresso) {
+            isRowDisabled = true;
+          }
+        }
+
+        const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
+        const dependenteInativoB20 = row.celula === "B14" && (!possuiMaterialImpresso || desativadosOpcionais.B20);
+        const isFieldDeactivated = (row.celula !== 'B21' && desativadosOpcionais[row.celula]) || dependenteInativoB26 || dependenteInativoB20;
+
+        let displayInicio = "-";
+        let displayFim = "-";
+
+        if (!isRowDisabled && !isFieldDeactivated) {
+          displayInicio = formatDate(row.inicio);
+          displayFim = row.fim && row.fim !== "-" ? formatDate(row.fim) : "-";
+        } else {
+          displayInicio = "Inativo / Desabilitado";
+          displayFim = "Inativo / Desabilitado";
+        }
+
+        let manualInicio = "-";
+        let manualFim = "-";
+        if (!isRowDisabled && !isFieldDeactivated) {
+          manualInicio = (datasManuaisExtras[row.celula]?.inicio || row.inicio) ? formatDate(datasManuaisExtras[row.celula]?.inicio || row.inicio) : "-";
+          manualFim = (row.fim && row.fim !== "-") ? formatDate(datasManuaisExtras[row.celula]?.fim || row.fim) : "-";
+        } else {
+          manualInicio = "Inativo / Desabilitado";
+          manualFim = "Inativo / Desabilitado";
+        }
+
+        const codOrdem = COD_ORDEM_MAP[row.celula] || "-";
+        const rowCells = [codOrdem, row.nome, displayInicio, displayFim];
+        if (modoEdicaoPrincipal || modoEdicaoExtras) {
+          rowCells.push(manualInicio, manualFim);
+        }
+        rowsCaed.push(rowCells);
       }
-    } else {
-      colWidthsCaed.push(20);
+    });
+
+    // Anotações Complementares (sem cabeçalho de tabela, com estrutura em branco se vazio e reproduzindo formatações)
+    const notesFormatCaed = extractFormattingFromHtml(observacoes || '');
+    rowsCaed.push(["", "", "", "", "", ""]);
+    rowsCaed.push(["ANOTAÇÕES COMPLEMENTARES", "", "", "", "", ""]);
+    const notesRowIdxCaed = rowsCaed.length;
+    rowsCaed.push([notesFormatCaed.text || "", "", "", "", "", ""]);
+
+    const wsCaed = XLSX.utils.aoa_to_sheet(rowsCaed);
+    const colWidthsCaed = [12, 55, 20, 20];
+    if (modoEdicaoPrincipal || modoEdicaoExtras) {
+      colWidthsCaed.push(20, 20);
     }
 
     applyStylesToSheet(wsCaed, {
       headerRowIndex: 2,
       headerBg: "FFF2CC", // AMARELO CLARO
+      sectionTitles: [
+        "TABELA CAEd E DATAS EXTRAS",
+        "ANOTAÇÕES COMPLEMENTARES"
+      ],
       colWidths: colWidthsCaed
     });
-    XLSX.utils.book_append_sheet(wb, wsCaed, "Tabela CAEd gera DVs");
+
+    const cellRefCaed = XLSX.utils.encode_cell({ r: notesRowIdxCaed, c: 0 });
+    if (wsCaed[cellRefCaed]) {
+      wsCaed[cellRefCaed].s = {
+        font: {
+          name: "Arial",
+          sz: 10,
+          color: { rgb: notesFormatCaed.color },
+          bold: notesFormatCaed.bold,
+          italic: notesFormatCaed.italic,
+          underline: notesFormatCaed.underline
+        },
+        alignment: { vertical: "top", horizontal: "left", wrapText: true },
+        border: {
+          top: { style: 'dotted', color: { rgb: 'C9CACC' } },
+          bottom: { style: 'dotted', color: { rgb: 'C9CACC' } },
+          left: { style: 'dotted', color: { rgb: 'C9CACC' } },
+          right: { style: 'dotted', color: { rgb: 'C9CACC' } }
+        }
+      };
+    }
+    XLSX.utils.book_append_sheet(wb, wsCaed, "Tabela CAEd e Datas Extras");
   }
-
-  // --- SHEET 4: DETALHAMENTO ADICIONAL DE ETAPAS ---
-  const headerExtras = ["Célula", "ETAPA (Atividade)"];
-  if (modoEdicaoExtras) {
-    if (ocultarCalculosExtras) {
-      headerExtras.push("DATA INÍCIO MANUAL", "DATA FIM MANUAL");
-    } else {
-      headerExtras.push("DATA INÍCIO", "DATA FIM", "DATA INÍCIO MANUAL", "DATA FIM MANUAL");
-    }
-  } else {
-    headerExtras.push("DATA INÍCIO", "DATA FIM");
-  }
-  headerExtras.push("FÓRMULA LÓGICA DE INÍCIO", "FÓRMULA LÓGICA FIM");
-
-  const rowsExtras = [
-    ["DETALHAMENTO ADICIONAL DE ETAPAS", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", ""],
-    headerExtras
-  ];
-
-  datasExtras.forEach((row) => {
-    let isRowDisabled = false;
-    if (evaluationType === 'somativa' || evaluationType === 'formativa') {
-      if (row.isB5B9 && !constaCaedAplicacao) {
-        isRowDisabled = true;
-      }
-      if (row.isB8 && !possuiEscrita) {
-        isRowDisabled = true;
-      }
-      if (row.isMaterialImpresso && !possuiMaterialImpresso) {
-        isRowDisabled = true;
-      }
-    }
-
-    const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
-    const dependenteInativoB20 = row.celula === "B14" && (!possuiMaterialImpresso || desativadosOpcionais.B20);
-    const isFieldDeactivated = (row.celula !== 'B21' && desativadosOpcionais[row.celula]) || dependenteInativoB26 || dependenteInativoB20;
-
-    let displayInicio = "-";
-    let displayFim = "-";
-
-    if (!isRowDisabled && !isFieldDeactivated) {
-      displayInicio = formatDate(row.inicio);
-      displayFim = row.fim && row.fim !== "-" ? formatDate(row.fim) : "-";
-    } else {
-      displayInicio = "Inativo / Desabilitado";
-      displayFim = "Inativo / Desabilitado";
-    }
-
-    let manualInicio = "-";
-    let manualFim = "-";
-    if (!isRowDisabled && !isFieldDeactivated) {
-      manualInicio = datasManuaisExtras[row.celula]?.inicio ? formatDate(datasManuaisExtras[row.celula].inicio) : "-";
-      manualFim = datasManuaisExtras[row.celula]?.fim ? formatDate(datasManuaisExtras[row.celula].fim) : "-";
-    } else {
-      manualInicio = "Inativo / Desabilitado";
-      manualFim = "Inativo / Desabilitado";
-    }
-
-    const rowCells = [row.celula, row.nome];
-    if (modoEdicaoExtras) {
-      if (ocultarCalculosExtras) {
-        rowCells.push(manualInicio, manualFim);
-      } else {
-        rowCells.push(displayInicio, displayFim, manualInicio, manualFim);
-      }
-    } else {
-      rowCells.push(displayInicio, displayFim);
-    }
-    rowCells.push(row.formula_inicio, row.formula_fim);
-    rowsExtras.push(rowCells);
-  });
-
-  const wsExtras = XLSX.utils.aoa_to_sheet(rowsExtras);
-  const colWidthsExtras = [8, 45];
-  if (modoEdicaoExtras) {
-    if (ocultarCalculosExtras) {
-      colWidthsExtras.push(18, 18);
-    } else {
-      colWidthsExtras.push(18, 18, 18, 18);
-    }
-  } else {
-    colWidthsExtras.push(18, 18);
-  }
-  colWidthsExtras.push(35, 35);
-
-  applyStylesToSheet(wsExtras, {
-    headerRowIndex: 2,
-    headerBg: "DDEBF7", // AZUL, ÊNFASE 1, MAIS CLARO 80%
-    colWidths: colWidthsExtras
-  });
-  XLSX.utils.book_append_sheet(wb, wsExtras, "Detalhamento de Etapas");
 
   // Determine standard file name: [COD.SUBPROGRAMA]_[SUBPROGRAMA]_PROGRAMAÇÃO_INICIAL.xlsb in uppercase
   const cleanSubprogram = (nomeSubprograma || "").trim().toUpperCase().replace(/\s+/g, '_');
