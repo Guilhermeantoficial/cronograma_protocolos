@@ -15,3 +15,106 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Quill Editor custom styling */
+.quill-container .ql-toolbar.ql-snow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border: none;
+  border-bottom: 1px solid #C9CACC;
+  background-color: #f8fafc;
+  padding: 6px 10px;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
+.ql-custom-clear-container {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.quill-container .ql-toolbar.ql-snow button.ql-clear-btn,
+.ql-toolbar button.ql-clear-btn {
+  width: auto !important;
+  height: auto !important;
+  float: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.375rem !important;
+  padding: 0.25rem 0.625rem !important;
+  font-size: 0.6875rem !important;
+  font-weight: 700 !important;
+  font-family: var(--font-sans) !important;
+  color: #475569 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #C9CACC !important;
+  border-radius: 0.375rem !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+}
+
+.quill-container .ql-toolbar.ql-snow button.ql-clear-btn svg,
+.ql-toolbar button.ql-clear-btn svg {
+  float: none !important;
+  width: 13px !important;
+  height: 13px !important;
+  min-width: 13px !important;
+  min-height: 13px !important;
+  stroke: currentColor !important;
+  display: inline-block !important;
+}
+
+.quill-container .ql-toolbar.ql-snow button.ql-clear-btn:hover:not(:disabled),
+.ql-toolbar button.ql-clear-btn:hover:not(:disabled) {
+  background-color: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+  color: #dc2626 !important;
+}
+
+.quill-container .ql-toolbar.ql-snow button.ql-clear-btn:disabled,
+.ql-toolbar button.ql-clear-btn:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+.quill-container .ql-container.ql-snow {
+  border: none;
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+}
+
+.quill-container .ql-editor {
+  min-height: 130px;
+  max-height: 380px;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  padding: 12px 14px;
+}
+
+.quill-container .ql-editor p,
+.quill-container .ql-editor ul,
+.quill-container .ql-editor ol,
+.quill-container .ql-editor h1,
+.quill-container .ql-editor h2,
+.quill-container .ql-editor h3,
+.quill-container .ql-editor li {
+  line-height: 1.5;
+}
+
+.quill-container .ql-editor.ql-blank::before {
+  font-style: normal;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  left: 14px;
+}

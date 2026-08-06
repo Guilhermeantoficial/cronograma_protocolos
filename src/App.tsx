@@ -2,11 +2,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Calendar, Trash2, Plus, Info, RefreshCw, Eye, EyeOff, Check, ChevronDown, ChevronUp, Filter, AlertCircle, ChevronLeft, ChevronRight, SlidersHorizontal, Download, HelpCircle, Pencil } from 'lucide-react';
 import { exportToXlsb } from './utils/exportXlsb';
 import { exportToPdf } from './utils/exportPdf';
+import { COD_ORDEM_MAP, getCodOrdemNumeric } from './utils/codOrdem';
+import { RichTextEditor } from './components/RichTextEditor';
 
 /**
- * Atualizar este valor sempre quando uma nova versão for disponibilizada em produção.
+ * Data da versão publicada.
+ * Atualize manualmente somente quando houver um novo deploy de produção.
  */
-const DATA_ULTIMA_VERSAO = '31/07/2026';
+const DATA_ULTIMA_VERSAO = '05/08/2026';
 
 // Feriados padrão nacionais e regionais (CAEd) - Adaptados para 2025/2026
 const FERIADOS_PADRAO = [
@@ -219,8 +222,12 @@ export default function App() {
 
   // Parâmetros Globais do Formulário
   const [dataEntrega, setDataEntrega] = useState('');
-  const [prazoContratual, setPrazoContratual] = useState('');
+  const [prazoContratual, setPrazoContratual] = useState<string | number>('');
   const [prazoComFator, setPrazoComFator] = useState<string | number>('');
+  const [prazoContratualOriginal, setPrazoContratualOriginal] = useState<string | number>('');
+  const [prazoComFatorOriginal, setPrazoComFatorOriginal] = useState<string | number>('');
+  const [prazoContratualEditado, setPrazoContratualEditado] = useState<string | number>('');
+  const [prazoComFatorEditado, setPrazoComFatorEditado] = useState<string | number>('');
 
   // Verificações de critérios de ativação
   const [constaCaedAplicacao, setConstaCaedAplicacao] = useState(false);
@@ -268,14 +275,54 @@ export default function App() {
   const [h11ManualFim, setH11ManualFim] = useState('');
   const [h12ManualInicio, setH12ManualInicio] = useState('');
 
+  // Texto de Observações e Considerações
+  const [observacoes, setObservacoes] = useState('');
+
   // Limpar preenchimentos manuais das tabelas
   const limparPreenchimentosManuaisTabela = () => {
     setDatasManuaisPrincipal({});
     setDatasManuaisExtras({});
   };
 
-  // Limpar preenchimentos manuais dos campos do sidebar
+  // Limpar preenchimentos manuais dos campos do painel (abaixo de "CAMPOS DE PREENCHIMENTO")
+  const limparPreenchimentosCamposPreenchimento = () => {
+    setB23ManualInicio('');
+    setB23ManualFim('');
+    setB26ManualInicio('');
+    setB5ManualInicio('');
+    setB5ManualFim('');
+    setB9ManualInicio('');
+    setB9ManualFim('');
+    setB10ManualInicio('');
+    setB15ManualInicio('');
+    setB18ManualInicio('');
+    setB20ManualInicio('');
+    setB21ManualInicio('');
+    setB24ManualInicio('');
+    setB28ManualInicio('');
+    setB29ManualInicio('');
+    setH5ManualInicio('');
+    setH8ManualInicio('');
+    setH8ManualFim('');
+    setH11ManualInicio('');
+    setH11ManualFim('');
+    setH12ManualInicio('');
+  };
+
+  // Limpar preenchimentos manuais dos campos do sidebar (todos os campos)
   const limparPreenchimentosManuaisSidebar = () => {
+    setCodSubprograma('');
+    setNomeSubprograma('');
+    setDataEntrega('');
+    setPrazoContratual('');
+    setPrazoComFator('');
+    setPrazoContratualOriginal('');
+    setPrazoComFatorOriginal('');
+    setPrazoContratualEditado('');
+    setPrazoComFatorEditado('');
+    setConstaCaedAplicacao(false);
+    setPossuiEscrita(false);
+    setPossuiMaterialImpresso(false);
     setB5ManualInicio('');
     setB5ManualFim('');
     setB9ManualInicio('');
@@ -297,6 +344,7 @@ export default function App() {
     setH11ManualInicio('');
     setH11ManualFim('');
     setH12ManualInicio('');
+    setObservacoes('');
   };
 
   const [feriados, setFeriados] = useState(() => {
@@ -607,7 +655,13 @@ export default function App() {
     const b8_m = getM("B8", "inicio", b26_m ? calcularDiaTrabalho(b26_m, -33) : "");
     const b10_m = getM("B10", "inicio", b10ManualInicio || "");
     const b20_m = getM("B20", "inicio", b20ManualInicio || "");
-    const b14_m = getM("B14", "inicio", b20_m ? calcularDiaTrabalho(b20_m, -12) : "");
+    const b14_m_calc = b20_m ? calcularDiaTrabalho(b20_m, -12) : "";
+    let b14_m = getM("B14", "inicio", b14_m_calc);
+    let b14_excedeuE8_m = false;
+    if (b14_m && b15_m && b14_m >= b15_m) {
+      b14_m = "";
+      b14_excedeuE8_m = true;
+    }
     const b13_m = getM("B13", "inicio", b20_m ? (b14_m ? calcularDiaTrabalho(b14_m, -1) : "") : (b15_m ? calcularDiaTrabalho(b15_m, -1) : ""));
     const b21_m = getM("B21", "inicio", b21ManualInicio || t_entrega || "");
     const b9_m = getM("B9", "inicio", b5_m ? calcularDiaTrabalho(b5_m, 11) : "");
@@ -628,7 +682,7 @@ export default function App() {
       B8: { inicio: b8_m, fim: b8_m },
       B10: { inicio: b10_m, fim: b10_m },
       B13: { inicio: b13_m, fim: b13_m },
-      B14: { inicio: b14_m, fim: b14_m },
+      B14: { inicio: b14_m, fim: b14_m, excedeuE8: b14_excedeuE8_m },
       B15: { inicio: b15_m, fim: b15_m },
       B17: { inicio: b17_m, fim: b17_m },
       B18: { inicio: getM("B18", "inicio", b18ManualInicio || ""), fim: getM("B18", "fim", b18ManualInicio || "") },
@@ -768,12 +822,19 @@ export default function App() {
       const b12_inicio = desativadosOpcionais.B12 ? "1889-01-01" : b12_inicio_raw;
       const b12_fim = desativadosOpcionais.B12 ? "1889-01-01" : b12_fim_raw;
       
-      const b14_inicio = isBlank(activeB20) ? "1889-01-01" : calcularDiaTrabalho(activeB20, -12);
+      const b14_inicio_raw = isBlank(activeB20) ? "1889-01-01" : calcularDiaTrabalho(activeB20, -12);
+      const dataE8 = !isBlank(b15_inicio_calc) ? b15_inicio_calc : (!isBlank(e8_or_c8) ? e8_or_c8 : "1889-01-01");
+      let b14_inicio = b14_inicio_raw;
+      let b14_excedeuE8 = false;
+      if (!isBlank(b14_inicio_raw) && !isBlank(dataE8) && b14_inicio_raw >= dataE8) {
+        b14_inicio = "1889-01-01";
+        b14_excedeuE8 = true;
+      }
       const b14_fim = b14_inicio;
 
       let b13_inicio = "1889-01-01";
       if (!isBlank(activeB20)) {
-        b13_inicio = isBlank(b14_inicio) ? "1889-01-01" : calcularDiaTrabalho(b14_inicio, -1);
+        b13_inicio = isBlank(b14_inicio_raw) ? "1889-01-01" : calcularDiaTrabalho(b14_inicio_raw, -1);
       } else {
         b13_inicio = isBlank(b15_inicio_calc) ? "1889-01-01" : calcularDiaTrabalho(b15_inicio_calc, -1);
       }
@@ -821,7 +882,7 @@ export default function App() {
         { celula: "B8", nome: "Recebimento do checklist de pessoa física", formula_inicio: "=DIATRABALHO(C26;-33;Feriados!$B:$B)", formula_fim: "=C8", inicio: b8_inicio, fim: b8_fim, isB8: true, isFromGrafica: false, dependenteB26: true },
         { celula: "B10", nome: "Análise das inconsistências da base institutional", formula_inicio: "Preenchimento Opcional", formula_fim: "=B21", inicio: b10_inicio, fim: b10_fim, manualB10: true, isFromGrafica: false },
         { celula: "B13", nome: "Disponibilização dos materiais de capacitação", formula_inicio: "=SE(C20=\"\";DIATRABALHO(C15;-1;Feriados!$B$2:$B$103);DIATRABALHO(C14;-1;Feriados!$B$2:$B$103))", formula_fim: "=C13", inicio: b13_inicio, fim: b13_fim, isFromGrafica: true },
-        { celula: "B14", nome: "Envio dos materiais de capacitação antecipados para impressão", formula_inicio: "=DIATRABALHO(C20;-12;Feriados!$B2:$B103)", formula_fim: "=C14", inicio: b14_inicio, fim: b14_fim, isMaterialImpresso: true, isFromGrafica: false },
+        { celula: "B14", nome: "Envio dos materiais de capacitação antecipados para impressão", formula_inicio: "=DIATRABALHO(C20;-12;Feriados!$B2:$B103)", formula_fim: "=C14", inicio: b14_inicio, fim: b14_fim, isMaterialImpresso: true, isFromGrafica: false, excedeuE8: b14_excedeuE8 },
         { celula: "B15", nome: "Envio dos arquivos para impressão", formula_inicio: "Cópia de E9", formula_fim: "-", inicio: b15_inicio_calc, fim: b15_inicio_calc, isFromGrafica: true },
         { celula: "B16", nome: "Envio dos arquivos para impressão (contratual)", formula_inicio: "=E8 (sem margem)", formula_fim: "=C16", inicio: b16_sem_margem, fim: b16_sem_margem, isFromGrafica: true },
         { celula: "B5", nome: "Solicitação de leiaute de base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(B15;-4;Feriados!$B:$B)", formula_fim: "=C5", inicio: finalB5Inicio, fim: finalB5Fim, isB5B9: true, isFromGrafica: true },
@@ -884,6 +945,17 @@ export default function App() {
   };
 
   const renderInicioCell = (row, isRowDisabled, applyBlueHighlight) => {
+    if (row.celula === "B14" && row.excedeuE8) {
+      return (
+        <div className="flex items-center justify-end gap-2.5">
+          <div className="w-[60px] shrink-0" />
+          <div className="text-right w-[110px] shrink-0">
+            <span className="text-slate-400 font-medium select-none font-sans"></span>
+          </div>
+        </div>
+      );
+    }
+
     // Se o elemento B26 ou dependente do B26 estiver inativado na tabela, renderize cinza/esmaecido
     const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
     const isRowEffectivelyDisabled = isRowDisabled || dependenteInativoB26;
@@ -917,10 +989,11 @@ export default function App() {
               className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3 w-3 cursor-pointer opacity-100"
             />
             <span className={`text-[7.5px] uppercase tracking-wide font-bold select-none font-sans opacity-100 ${isDeactivated ? 'text-slate-900 font-black' : 'text-slate-700'}`}>
+              {!isDeactivated ? "Ativo" : "Inativo"}
             </span>
           </label>
           <div className={`text-right w-[110px] shrink-0 ${isDeactivated ? 'opacity-35' : ''}`}>
-            <span className={applyBlueHighlight && !isDeactivated ? 'text-[#3F48CC] font-bold font-sans' : 'text-slate-800 font-bold font-sans'}>
+            <span className="text-slate-800 font-normal font-sans">
               {isDeactivated ? "-" : formatarDataBR(row.inicio)}
             </span>
           </div>
@@ -968,7 +1041,7 @@ export default function App() {
             {isDeactivated ? (
                <span className="text-slate-400 font-medium select-none font-sans">-</span>
             ) : row.opcionalB26 ? (
-              <span className={applyBlueHighlight ? 'text-[#3F48CC] font-bold font-sans' : 'text-slate-800 font-bold font-sans'}>
+              <span className="text-slate-800 font-normal font-sans">
                 {formatarDataBR(row.inicio)}
               </span>
             ) : (
@@ -1008,7 +1081,7 @@ export default function App() {
                 className="border border-slate-200 rounded px-1.5 h-7 text-[11px] font-medium text-[#3F48CC] bg-white focus:outline-none focus:border-[#3F48CC] w-[110px] hover:border-slate-300 transition-colors shadow-xs"
               />
             ) : (
-              <span className={applyBlueHighlight ? 'text-[#3F48CC] font-bold font-sans' : 'text-slate-800 font-bold font-sans'}>
+              <span className="text-slate-800 font-normal font-sans">
                 {formatarDataBR(row.inicio)}
               </span>
             )}
@@ -1040,7 +1113,7 @@ export default function App() {
       <div className="flex items-center justify-end gap-2.5">
         <div className="w-[60px] shrink-0" />
         <div className="text-right w-[110px] shrink-0">
-          <span className={applyBlueHighlight ? 'text-[#3F48CC] font-bold font-sans' : 'text-slate-800 font-bold font-sans'}>
+          <span className="text-slate-800 font-normal font-sans">
             {formatarDataBR(row.inicio)}
           </span>
         </div>
@@ -1049,6 +1122,17 @@ export default function App() {
   };
 
   const renderFimCell = (row, isRowDisabled, applyBlueHighlight) => {
+    if (row.celula === "B14" && row.excedeuE8) {
+      return (
+        <div className="flex items-center justify-end gap-2.5">
+          <div className="w-[60px] shrink-0" />
+          <div className="text-right w-[110px] shrink-0">
+            <span className="text-slate-400 font-medium select-none font-sans"></span>
+          </div>
+        </div>
+      );
+    }
+
     // Se o elemento B26 ou dependente do B26 estiver inativado na tabela, renderize cinza/esmaecido
     const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
     const isRowEffectivelyDisabled = isRowDisabled || dependenteInativoB26;
@@ -1071,7 +1155,7 @@ export default function App() {
         <div className="flex items-center justify-end gap-2.5">
           <div className="w-[60px] shrink-0" />
           <div className={`text-right w-[110px] shrink-0 ${isDeactivated ? 'opacity-35' : ''}`}>
-            <span className={applyBlueHighlight && !isDeactivated && row.fim !== "-" ? 'text-[#3F48CC] font-bold font-sans' : 'text-slate-800 font-bold font-sans'}>
+            <span className="text-slate-800 font-normal font-sans">
               {isDeactivated ? "-" : formatarDataBR(row.fim)}
             </span>
           </div>
@@ -1097,7 +1181,7 @@ export default function App() {
                 className="border border-slate-200 rounded px-1.5 h-7 text-[11px] font-medium text-[#3F48CC] bg-white focus:outline-none focus:border-[#3F48CC] w-[110px] hover:border-slate-300 transition-colors shadow-xs"
               />
             ) : (
-              <span className={applyBlueHighlight && row.fim !== "-" ? 'text-[#3F48CC] font-bold font-sans' : 'text-slate-800 font-bold font-sans'}>
+              <span className="text-slate-800 font-normal font-sans">
                 {formatarDataBR(row.fim)}
               </span>
             )}
@@ -1145,12 +1229,11 @@ export default function App() {
       );
     }
 
-    const showHighlight = applyBlueHighlight && row.fim !== "-";
     return (
       <div className="flex items-center justify-end gap-2.5">
         <div className="w-[60px] shrink-0" />
         <div className="text-right w-[110px] shrink-0">
-          <span className={showHighlight ? 'text-[#3F48CC] font-bold font-sans' : 'text-slate-800 font-bold font-sans'}>
+          <span className="text-slate-800 font-normal font-sans">
             {formatarDataBR(row.fim)}
           </span>
         </div>
@@ -1183,7 +1266,7 @@ export default function App() {
               <div className="flex items-center gap-4">
                 <span className="inline-block w-1.5 h-4 bg-[#FFF200] rounded-full"></span>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
-                  Parâmetros e Configurações
+                  Parâmetros
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -1205,15 +1288,11 @@ export default function App() {
             </div>
 
             {/* Conteúdo com scroll do Sidebar */}
-            <div className="flex-1 overflow-y-auto scrollbar-none p-4 space-y-4 bg-white">
+            <div className="flex-1 overflow-y-auto scrollbar-none p-3 space-y-2 bg-white">
               {/* Campo CÓD. SUBPROGRAMA e NOME DO SUBPROGRAMA */}
-              <div className="space-y-3.5 pb-3.5 border-b border-slate-100">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#3F48CC] font-sans block">IDENTIFICAÇÃO</span>
-                </div>
-                
+              <div className="space-y-1.5 pb-2 border-b border-slate-100">
                 {/* CÓD. SUBPROGRAMA */}
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
                     <label className="block text-[10px] font-bold uppercase text-slate-700 font-sans">
                       Cód. Subprograma <span className="text-red-500 font-bold">*</span>:
@@ -1234,7 +1313,7 @@ export default function App() {
                       const val = e.target.value.replace(/\D/g, '').slice(0, 4);
                       setCodSubprograma(val);
                     }}
-                    className={`w-full border rounded px-2.5 h-8 text-xs font-bold font-sans transition focus:outline-none focus:ring-1 focus:ring-[#3F48CC] ${
+                    className={`w-full border rounded px-2.5 h-7.5 text-xs font-bold font-sans transition focus:outline-none focus:ring-1 focus:ring-[#3F48CC] ${
                       isSidebarEnabled 
                         ? 'border-[#C9CACC] text-slate-800 bg-white focus:border-[#3F48CC]' 
                         : 'border-red-300 text-red-600 bg-red-50/10 placeholder-red-300 focus:border-red-500'
@@ -1243,7 +1322,7 @@ export default function App() {
                 </div>
 
                 {/* NOME DO SUBPROGRAMA */}
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <label className="block text-[10px] font-bold uppercase text-slate-700 font-sans">
                     Nome do Subprograma:
                   </label>
@@ -1253,7 +1332,7 @@ export default function App() {
                     value={nomeSubprograma}
                     onChange={(e) => setNomeSubprograma(e.target.value)}
                     disabled={!isSidebarEnabled}
-                    className={`w-full border rounded px-2.5 h-8 text-xs font-medium font-sans transition focus:outline-none focus:border-[#3F48CC] focus:ring-1 focus:ring-[#3F48CC] ${
+                    className={`w-full border rounded px-2.5 h-7.5 text-xs font-medium font-sans transition focus:outline-none focus:border-[#3F48CC] focus:ring-1 focus:ring-[#3F48CC] ${
                       isSidebarEnabled 
                         ? 'border-[#C9CACC] text-slate-800 bg-white' 
                         : 'border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed'
@@ -1265,9 +1344,9 @@ export default function App() {
 
 
               {/* Wrapper conditional class based on isSidebarEnabled */}
-              <div className={`space-y-4 transition-all duration-300 ${!isSidebarEnabled ? 'opacity-35 pointer-events-none select-none' : ''}`}>
+              <div className={`space-y-2.5 transition-all duration-300 ${!isSidebarEnabled ? 'opacity-35 pointer-events-none select-none' : ''}`}>
                 {/* 1. Tipo de Avaliação */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <span className="text-[10px] font-black uppercase tracking-widest text-[#3F48CC] font-sans">TIPO DE AVALIAÇÃO</span>
               <div className="inline-flex w-full rounded-lg border border-[#C9CACC] bg-white p-0.5">
                 <button
@@ -1296,7 +1375,7 @@ export default function App() {
             </div>
 
             {/* 2. Cenário de DVs */}
-            <div className={`space-y-1.5 transition-all duration-300 ${isFluencia ? 'opacity-40 select-none pointer-events-none' : ''}`}>
+            <div className={`space-y-1 transition-all duration-300 ${isFluencia ? 'opacity-40 select-none pointer-events-none' : ''}`}>
               <span className="text-[10px] font-black uppercase tracking-widest text-[#3F48CC] font-sans">GERAÇÃO DE DADOS VARIÁVEIS</span>
               <div className="inline-flex w-full rounded-lg border border-[#C9CACC] bg-white p-0.5">
                 <button
@@ -1327,14 +1406,14 @@ export default function App() {
             </div>
 
             {/* 3. Parâmetros Iniciais */}
-            <div className="space-y-2.5 pt-3 border-t border-slate-100">
+            <div className="space-y-1.5 pt-2 border-t border-slate-100">
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-black uppercase tracking-widest text-[#3F48CC] font-sans">PARÂMETROS INICIAIS</span>
                 <span className="text-red-500 font-bold text-[8px]">* Obrigatórios</span>
               </div>
 
               {/* Entrega nos Polos */}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <label className="block text-[10px] font-bold uppercase text-slate-700 font-sans">
                   ENTREGA NOS POLOS ATÉ:<span className="text-red-500 font-bold">*</span>
                 </label>
@@ -1342,43 +1421,66 @@ export default function App() {
                   value={dataEntrega}
                   onChange={(val) => setDataEntrega(val)}
                   required
-                  className="w-full border border-slate-200 rounded px-2 h-8 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:border-[#3F48CC] hover:border-slate-300 transition shadow-xs"
+                  className="w-full border border-slate-200 rounded px-2 h-7.5 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:border-[#3F48CC] hover:border-slate-300 transition shadow-xs"
                 />
               </div>
 
-              {/* Prazo Contratual */}
-              <div className="space-y-1">
+              {/* Prazo Gráfico */}
+              <div className="space-y-0.5">
                 <div className="flex items-center gap-1 font-sans">
                   <label className="block text-[10px] font-bold uppercase text-slate-700 font-sans">
-                    Prazo Contratual (Dias) <span className="text-red-500 font-bold">*</span>:
+                    Prazo Gráfico (Dias) <span className="text-red-500 font-bold">*</span>:
                   </label>
                   <Info className="w-3 h-3 text-[#3F48CC]" />
                 </div>
                 <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="Ex: 28"
-                    value={prazoContratual}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? '' : parseInt(e.target.value) || 0;
-                      setPrazoContratual(val);
-                      if (val !== '') {
-                        setPrazoComFator(Math.ceil(val * 1.25));
-                      } else {
-                        setPrazoComFator('');
-                      }
-                    }}
-                    className="w-20 border border-[#C9CACC] rounded p-1.5 text-xs font-bold text-center bg-white focus:outline-none focus:border-[#3F48CC] shrink-0 font-sans"
-                  />
-                  <div className="flex-1 border border-[#C9CACC] rounded px-2 py-1 flex flex-col justify-center bg-white text-[9px] min-w-0">
-                    <span className="font-semibold text-slate-400 truncate">Fator 1,25:</span>
+                  <div className="w-24 border border-[#C9CACC] rounded px-2 py-0.5 flex flex-col justify-center bg-white text-[9px] shrink-0">
+                    <span className="font-semibold text-slate-400 truncate">Contratual:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Ex: 28"
+                      value={prazoContratual}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0;
+                        setPrazoContratual(val);
+                        if (val !== '') {
+                          const comFator = Math.ceil(Number(val) * 1.25);
+                          setPrazoComFator(comFator);
+                          setPrazoContratualOriginal(val);
+                          setPrazoComFatorOriginal(comFator);
+                        } else {
+                          setPrazoComFator('');
+                          setPrazoContratualOriginal('');
+                          setPrazoComFatorOriginal('');
+                        }
+                        setPrazoContratualEditado('');
+                        setPrazoComFatorEditado('');
+                      }}
+                      className="w-full text-xs font-bold text-slate-800 focus:outline-none bg-transparent font-sans"
+                    />
+                  </div>
+                  <div className="flex-1 border border-[#C9CACC] rounded px-2 py-0.5 flex flex-col justify-center bg-white text-[9px] min-w-0">
+                    <span className="font-semibold text-slate-400 truncate">Prazo Protocolos (Fator 1,25):</span>
                     <input
                       type="number"
                       min="1"
                       placeholder="Ex: 35"
                       value={prazoComFator}
-                      onChange={(e) => setPrazoComFator(e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0;
+                        setPrazoComFator(val);
+                        if (val !== '') {
+                          if (prazoComFatorOriginal !== '' && prazoComFatorOriginal !== null) {
+                            setPrazoComFatorEditado(val);
+                          } else {
+                            setPrazoComFatorOriginal(val);
+                            setPrazoComFatorEditado('');
+                          }
+                        } else {
+                          setPrazoComFatorEditado('');
+                        }
+                      }}
                       className="w-full text-xs font-bold text-[#3F48CC] focus:outline-none bg-transparent font-sans"
                     />
                   </div>
@@ -1388,13 +1490,13 @@ export default function App() {
 
             {/* 5. Critérios de Habilitação do Subprograma */}
             {(evaluationType === 'somativa' || evaluationType === 'formativa') && (
-              <div className="space-y-1 pt-2.5 border-t border-slate-100">
+              <div className="space-y-1 pt-2 border-t border-slate-100">
                 <span className="text-[10px] font-black uppercase tracking-widest text-[#3F48CC] block">
                   CRITÉRIOS DE HABILITAÇÃO
                 </span>
                 
-                <div className="grid grid-cols-2 gap-1.5">
-                  <label className="flex items-center gap-1.5 p-1.5 bg-slate-50 border border-[#C9CACC] rounded-md cursor-pointer hover:bg-slate-100 transition min-h-[40px]">
+                <div className="grid grid-cols-2 gap-1">
+                  <label className="flex items-center gap-1.5 p-1 bg-slate-50 border border-[#C9CACC] rounded-md cursor-pointer hover:bg-slate-100 transition min-h-[36px]">
                     <input
                       type="checkbox"
                       checked={constaCaedAplicacao}
@@ -1409,7 +1511,7 @@ export default function App() {
                     </div>
                   </label>
 
-                  <label className={`flex items-center gap-1.5 p-1.5 bg-slate-50 border border-[#C9CACC] rounded-md transition min-h-[40px] ${
+                  <label className={`flex items-center gap-1.5 p-1 bg-slate-50 border border-[#C9CACC] rounded-md transition min-h-[36px] ${
                     desativadosOpcionais.B26
                       ? "opacity-60 cursor-not-allowed select-none"
                       : "cursor-pointer hover:bg-slate-100"
@@ -1431,7 +1533,7 @@ export default function App() {
                     </div>
                   </label>
 
-                  <label className="flex items-center gap-1.5 p-1.5 bg-slate-50 border border-[#C9CACC] rounded-md cursor-pointer hover:bg-slate-100 transition min-h-[40px] col-span-2">
+                  <label className="flex items-center gap-1.5 p-1 bg-slate-50 border border-[#C9CACC] rounded-md cursor-pointer hover:bg-slate-100 transition min-h-[36px] col-span-2">
                     <input
                       type="checkbox"
                       checked={possuiMaterialImpresso}
@@ -1450,15 +1552,15 @@ export default function App() {
             )}
 
             {/* 4. Campos de Preenchimento da Avaliação Selecionada */}
-            <div className="space-y-2.5 pt-3 border-t border-slate-100">
+            <div className="space-y-1.5 pt-2 border-t border-slate-100">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest text-[#3F48CC] block">
                   CAMPOS DE PREENCHIMENTO
                 </span>
                 <button
-                  onClick={limparPreenchimentosManuaisSidebar}
+                  onClick={limparPreenchimentosCamposPreenchimento}
                   className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 hover:text-red-600 hover:bg-red-50 px-1.5 py-0.5 rounded border border-transparent hover:border-red-200 transition font-sans"
-                  title="Limpar preenchimentos manuais dos campos do painel"
+                  title="Limpar preenchimentos manuais dos campos de preenchimento"
                 >
                   <Trash2 className="w-3 h-3" />
                   <span>Limpar</span>
@@ -1466,18 +1568,18 @@ export default function App() {
               </div>
 
               {/* B23: Aplicação dos cadernos de testes impressos */}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <label className="block text-[10px] font-bold text-slate-700">
                   APLICAÇÃO CADERNOS: <span className="text-red-500 font-bold">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   <div className="space-y-0.5">
                     <span className="text-[9px] font-semibold text-slate-500 block uppercase">Início</span>
                     <CampoData
                       value={b23ManualInicio}
                       onChange={(val) => setB23ManualInicio(val)}
                       required
-                      className="w-full border border-slate-200 rounded px-2 h-8 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:border-[#3F48CC] hover:border-slate-300 transition shadow-xs"
+                      className="w-full border border-slate-200 rounded px-2 h-7.5 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:border-[#3F48CC] hover:border-slate-300 transition shadow-xs"
                     />
                   </div>
                   <div className="space-y-0.5">
@@ -1486,14 +1588,14 @@ export default function App() {
                       value={b23ManualFim}
                       onChange={(val) => setB23ManualFim(val)}
                       required
-                      className="w-full border border-slate-200 rounded px-2 h-8 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:border-[#3F48CC] hover:border-slate-300 transition shadow-xs"
+                      className="w-full border border-slate-200 rounded px-2 h-7.5 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:border-[#3F48CC] hover:border-slate-300 transition shadow-xs"
                     />
                   </div>
                 </div>
               </div>
 
               {/* B26: Recolhimento dos materiais nos polos [INÍCIO] */}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <div className="flex items-center justify-between">
                   <label className="block text-[10px] font-bold text-slate-700">
                     INÍCIO RECOLHIMENTO POLOS:
@@ -1519,12 +1621,12 @@ export default function App() {
                   disabled={desativadosOpcionais.B26}
                   value={desativadosOpcionais.B26 ? "" : b26ManualInicio}
                   onChange={(val) => setB26ManualInicio(val)}
-                  className="w-full border border-slate-200 rounded px-2 h-8 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:border-[#3F48CC] hover:border-slate-300 transition shadow-xs"
+                  className="w-full border border-slate-200 rounded px-2 h-7.5 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:border-[#3F48CC] hover:border-slate-300 transition shadow-xs"
                 />
               </div>
 
               {/* SOLICITAÇÃO DE LEIAUTE DA BASE INSTITUCIONAL */}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <label className="block text-[10px] font-bold text-slate-700 uppercase font-sans">
                   SOLICITAÇÃO DE LEIAUTE DA BASE INSTITUCIONAL <span className="text-red-500 font-bold">*</span>:
                 </label>
@@ -1573,30 +1675,20 @@ export default function App() {
         <header className="bg-white border-t-4 border-[#FFF200] border-b border-[#C9CACC] py-6 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="inline-flex items-center gap-2 border border-[#FFF200] px-2.5 py-0.5 text-[11px] font-black tracking-wider text-slate-950 rounded bg-[#FFF200] font-sans">
-                  Fundação CAEd
-                </div>
-                <div className="inline-flex items-center gap-2 border border-[#3F48CC] px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-white rounded bg-[#3F48CC] font-sans">
-                  Última atualização: {DATA_ULTIMA_VERSAO}
-                </div>
-              </div>
-              <h1 className="text-xl md:text-2xl font-light uppercase tracking-wide text-slate-950 mt-2 font-sans">
+              <h1 className="text-xl md:text-2xl font-light uppercase tracking-wide text-slate-950 font-sans">
                 Planejamento e Protocolos <span className="font-semibold text-slate-700">| Programação de Cronograma</span>
               </h1>
-              {isSidebarEnabled && nomeSubprograma && (
-                <div className="mt-2 flex flex-wrap items-center gap-2 font-sans">
-                  <span className="text-xs font-black bg-[#3F48CC] text-white px-2.5 py-0.5 rounded shadow-sm tracking-wide">
-                    CÓD: {codSubprograma}
-                  </span>
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wide border-l border-slate-300 pl-2">
-                    {nomeSubprograma}
-                  </span>
-                </div>
-              )}
               <p className="text-xs text-slate-500 mt-1.5 max-w-2xl font-sans">
                 Cálculos auxiliares na programação inicial de cronograma.
               </p>
+              <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                <div className="inline-flex items-center gap-2 border border-[#FFF200] px-2.5 py-0.5 text-[11px] font-black tracking-wider text-slate-950 rounded bg-[#FFF200] font-sans">
+                  Fundação CAEd
+                </div>
+                <div className="inline-flex items-center gap-2 border border-[#FF3471] px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-white rounded bg-[#FF3471] font-sans">
+                  Última atualização: {DATA_ULTIMA_VERSAO}
+                </div>
+              </div>
             </div>
             {!sidebarOpen && (
               <button
@@ -1650,7 +1742,7 @@ export default function App() {
                 <div className="space-y-4">
                   <h2 className="text-xl font-light uppercase tracking-wide text-slate-500 flex items-center font-sans">
                     <span className="inline-block w-1.5 h-6 bg-[#FFF200] mr-2 rounded-full font-sans"></span>
-                    {activeScenario === 'caed' ? 'FLUXO PRINCIPAL DE PRAZOS CAED' : 'FLUXO PRINCIPAL DE PRAZOS GRÁFICOS'}
+                    {activeScenario === 'caed' ? 'FLUXO PRINCIPAL DE PRAZOS CAEd' : 'FLUXO PRINCIPAL DE PRAZOS GRÁFICOS'}
                   </h2>
 
                   {!possuiParametrosPreenchidos() ? (
@@ -1662,17 +1754,21 @@ export default function App() {
                       {activeScenario === 'caed' && (
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full min-h-[112px]">
+                            <div className="border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col h-full min-h-[112px]">
                               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans leading-tight">
                                 Recebimento de base com gordura
                               </div>
-                              <div className="text-2xl font-bold mt-2 text-[#3F48CC] font-sans">{formatarDataBR(calculosCaed.c1_limiteBaseDestaque)}</div>
+                              <div className="flex-1 flex items-center text-left">
+                                <div className="text-2xl font-bold text-[#3F48CC] font-sans">{formatarDataBR(calculosCaed.c1_limiteBaseDestaque)}</div>
+                              </div>
                             </div>
-                            <div className={`border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full min-h-[112px] transition-opacity duration-200 ${!possuiEscrita ? 'opacity-40 bg-slate-50 border-slate-200 select-none' : ''}`}>
+                            <div className={`border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col h-full min-h-[112px] transition-opacity duration-200 ${!possuiEscrita ? 'opacity-40 bg-slate-50 border-slate-200 select-none' : ''}`}>
                               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans leading-tight">
                                 Disponibilização dos itens de escrita antecipados
                               </div>
-                              <div className={`text-2xl font-bold mt-2 font-sans ${!possuiEscrita ? 'text-slate-400' : 'text-[#3F48CC]'}`}>{formatarDataBR(calculosCaed.c2_dispEscritaDestaque)}</div>
+                              <div className="flex-1 flex items-center text-left">
+                                <div className={`text-2xl font-bold font-sans ${!possuiEscrita ? 'text-slate-400' : 'text-[#3F48CC]'}`}>{formatarDataBR(calculosCaed.c2_dispEscritaDestaque)}</div>
+                              </div>
                             </div>
                             <div className="border border-[#C9CACC] border-l-[5px] border-l-[#3F48CC] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-start h-full min-h-[112px]">
                               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans mb-1.5 leading-tight">
@@ -1749,7 +1845,8 @@ export default function App() {
                                 <table className="w-full text-left border-collapse text-[13px] sm:text-sm">
                                   <thead>
                                     <tr className="border-b border-[#C9CACC] font-semibold uppercase tracking-wider text-slate-400 text-xs">
-                                      <th className="pb-2 w-12 text-center"></th>
+                                      <th className="pb-2 w-9 text-center"></th>
+                                      <th className="pb-2 w-12 text-center font-semibold text-slate-400 text-xs">CÓD.</th>
                                       <th className="pb-2 text-left">ETAPA</th>
                                       {!ocultarCalculosPrincipal && (
                                         <>
@@ -1767,152 +1864,179 @@ export default function App() {
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-[#C9CACC] text-slate-600 font-medium">
-                                    {["C4", "C5", "C6", "C7", "C8"].map((cel) => {
-                                      const isRowDisabled = cel === "C5" && !possuiEscrita;
-                                      const dataValFim = calculosCaed[cel.toLowerCase()];
-                                      const dataValInicio = cel === "C8" ? (calculosCaed.c8_inicio || dataValFim) : dataValFim;
-                                      const isEndEqual = dataValInicio === dataValFim;
-                                      const endColorClass = isEndEqual ? 'text-slate-900' : 'text-[#3F48CC]';
-                                      return (
-                                        <tr key={cel} className={`hover:bg-slate-50 transition-colors ${isRowDisabled ? 'opacity-40 bg-slate-50 select-none' : ''}`}>
-                                          <td className="py-2 text-center text-[10px] font-bold text-[#2E6F40] font-sans w-12">{cel}</td>
-                                          <td className={`py-1.5 font-sans font-medium ${isRowDisabled ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {cel === "C4" && "Recebimento de base institucional (inegociável, sem gordura)"}
-                                            {cel === "C5" && "Disponibilização dos itens de escrita antecipados"}
-                                            {cel === "C6" && "Geração e validação dos arquivos de dados variáveis (DVs)"}
-                                            {cel === "C7" && "Disponibilização dos cadernos de teste"}
-                                            {cel === "C8" && "Homologação dos arquivos de DVs"}
-                                          </td>
-                                          {!ocultarCalculosPrincipal && (
-                                            <>
-                                              <td className="py-1.5 text-right font-sans">
-                                                <span className={`block font-sans ${modoEdicaoPrincipal ? 'text-slate-500 font-normal text-xs' : isRowDisabled ? 'text-slate-400 font-semibold' : 'font-bold text-slate-900 text-xs sm:text-sm'}`}>
-                                                  {isRowDisabled ? "-" : formatarDataBR(dataValInicio)}
-                                                </span>
-                                              </td>
-                                              <td className="py-1.5 text-right font-sans">
-                                                <span className={`block font-sans ${modoEdicaoPrincipal ? 'text-slate-500 font-normal text-xs' : isRowDisabled ? 'text-slate-400 font-semibold' : `font-bold ${endColorClass} text-xs sm:text-sm`}`}>
-                                                  {isRowDisabled ? "-" : formatarDataBR(dataValFim)}
-                                                </span>
-                                              </td>
-                                            </>
-                                          )}
-                                          {modoEdicaoPrincipal && (
-                                            <>
-                                              <td className="py-1 text-right font-sans">
-                                                {isRowDisabled || cel !== "C8" ? (
-                                                  <span className="text-slate-400 mr-8">-</span>
-                                                ) : (
-                                                  <CampoData
-                                                    value={datasManuaisPrincipal["C8_inicio"] || obterDatasManuaisCaed().C8_inicio || ""}
-                                                    onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, "C8_inicio": val })}
-                                                    className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans"
-                                                  />
-                                                )}
-                                              </td>
-                                              <td className="py-1 text-right font-sans">
-                                                {isRowDisabled ? (
-                                                  <span className="text-slate-400 mr-8">-</span>
-                                                ) : (
-                                                  <CampoData
-                                                    value={datasManuaisPrincipal[cel] || obterDatasManuaisCaed()[cel] || ""}
-                                                    onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [cel]: val })}
-                                                    className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans"
-                                                  />
-                                                )}
-                                              </td>
-                                            </>
-                                          )}
-                                          {!ocultarFormulas && (
-                                            <td className="py-1.5 font-mono text-xs text-slate-400 text-right">
-                                              {cel === "C4" && "DIATRABALHO(C6;-10;Feriados!$B:$B)"}
-                                              {cel === "C5" && "DIATRABALHO(C4;3;Feriados!$B:$B)"}
-                                              {cel === "C6" && "DIATRABALHO(C8;-2;Feriados!$B:$B)"}
-                                              {cel === "C7" && "DIATRABALHO(B15;-2;Feriados!$B:$B)"}
-                                              {cel === "C8" && "DIATRABALHO(B15;-1;Feriados!$B:$B)"}
-                                            </td>
-                                          )}
-                                        </tr>
-                                      );
-                                    })}
+                                     {(() => {
+                                       const mainCells = ["C4", "C5", "C6", "C7", "C8"];
+                                       const extras = obterDatasExtrasCalculadas();
+                                       const allCaedRows = [
+                                         ...mainCells.map((cel) => ({ isMain: true as const, celula: cel, extraRow: null as any })),
+                                         ...extras.map((row: any) => ({ isMain: false as const, celula: row.celula, extraRow: row }))
+                                       ].sort((a, b) => getCodOrdemNumeric(a.celula) - getCodOrdemNumeric(b.celula));
 
-                                    {/* B-rows */}
-                                    {obterDatasExtrasCalculadas().map((row) => {
-                                      let isRowDisabled = false;
-                                      if (evaluationType === 'somativa' || evaluationType === 'formativa') {
-                                          if (row.isB5B9 && !constaCaedAplicacao) {
-                                            isRowDisabled = true;
-                                          }
-                                          if (row.isB8 && !possuiEscrita) {
-                                            isRowDisabled = true;
-                                          }
-                                          if (row.isMaterialImpresso && !possuiMaterialImpresso) {
-                                            isRowDisabled = true;
-                                          }
-                                      }
+                                       return allCaedRows.map((item) => {
+                                         if (item.isMain) {
+                                           const cel = item.celula;
+                                           const isRowDisabled = cel === "C5" && !possuiEscrita;
+                                           const dataValFim = calculosCaed[cel.toLowerCase()];
+                                           const dataValInicio = cel === "C8" ? (calculosCaed.c8_inicio || dataValFim) : dataValFim;
+                                           return (
+                                             <tr key={cel} className={`hover:bg-slate-50 transition-colors ${isRowDisabled ? 'opacity-40 bg-slate-50 select-none' : ''}`}>
+                                               <td className="py-2 text-center text-[10px] font-bold text-[#2E6F40] font-sans w-9">{cel}</td>
+                                               <td className={`py-2 text-center text-xs font-medium font-sans w-12 ${isRowDisabled ? 'text-slate-400' : 'text-[#2E6F40]'}`}>{COD_ORDEM_MAP[cel] || ""}</td>
+                                               <td className={`py-1.5 font-sans font-medium ${isRowDisabled ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                 {cel === "C4" && "Recebimento de base institucional (inegociável, sem gordura)"}
+                                                 {cel === "C5" && "Disponibilização dos itens de escrita antecipados"}
+                                                 {cel === "C6" && "Geração e validação dos arquivos de dados variáveis (DVs)"}
+                                                 {cel === "C7" && "Disponibilização dos cadernos de testes"}
+                                                 {cel === "C8" && "Homologação dos arquivos de DVs"}
+                                               </td>
+                                               {!ocultarCalculosPrincipal && (
+                                                 <>
+                                                   <td className="py-1.5 text-right font-sans">
+                                                     <span className={`block font-sans ${isRowDisabled ? 'text-slate-400 font-normal' : 'font-normal text-slate-900 text-xs sm:text-sm'}`}>
+                                                       {isRowDisabled ? "-" : formatarDataBR(dataValInicio)}
+                                                     </span>
+                                                   </td>
+                                                   <td className="py-1.5 text-right font-sans">
+                                                     <span className={`block font-sans ${isRowDisabled ? 'text-slate-400 font-normal' : 'font-normal text-slate-900 text-xs sm:text-sm'}`}>
+                                                       {isRowDisabled ? "-" : formatarDataBR(dataValFim)}
+                                                     </span>
+                                                   </td>
+                                                 </>
+                                               )}
+                                               {modoEdicaoPrincipal && (
+                                                 <>
+                                                   <td className="py-1 text-right font-sans">
+                                                     {isRowDisabled || cel !== "C8" ? (
+                                                       <span className="text-slate-400 mr-8">-</span>
+                                                     ) : (
+                                                       <CampoData
+                                                         value={datasManuaisPrincipal["C8_inicio"] || obterDatasManuaisCaed().C8_inicio || ""}
+                                                         onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, "C8_inicio": val })}
+                                                         className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans"
+                                                       />
+                                                     )}
+                                                   </td>
+                                                   <td className="py-1 text-right font-sans">
+                                                     {isRowDisabled ? (
+                                                       <span className="text-slate-400 mr-8">-</span>
+                                                     ) : (
+                                                       <CampoData
+                                                         value={datasManuaisPrincipal[cel] || obterDatasManuaisCaed()[cel] || ""}
+                                                         onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [cel]: val })}
+                                                         className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans"
+                                                       />
+                                                     )}
+                                                   </td>
+                                                 </>
+                                               )}
+                                               {!ocultarFormulas && (
+                                                 <td className="py-1.5 font-mono text-xs text-slate-400 text-right">
+                                                   {cel === "C4" && "DIATRABALHO(C6;-10;Feriados!$B:$B)"}
+                                                   {cel === "C5" && "DIATRABALHO(C4;3;Feriados!$B:$B)"}
+                                                   {cel === "C6" && "DIATRABALHO(C8;-2;Feriados!$B:$B)"}
+                                                   {cel === "C7" && "DIATRABALHO(B15;-2;Feriados!$B:$B)"}
+                                                   {cel === "C8" && "DIATRABALHO(B15;-1;Feriados!$B:$B)"}
+                                                 </td>
+                                               )}
+                                             </tr>
+                                           );
+                                         } else {
+                                           const row: any = item.extraRow;
+                                           let isRowDisabled = false;
+                                           if (evaluationType === 'somativa' || evaluationType === 'formativa') {
+                                               if (row.isB5B9 && !constaCaedAplicacao) {
+                                                 isRowDisabled = true;
+                                               }
+                                               if (row.isB8 && !possuiEscrita) {
+                                                 isRowDisabled = true;
+                                               }
+                                               if (row.isMaterialImpresso && !possuiMaterialImpresso) {
+                                                 isRowDisabled = true;
+                                               }
+                                           }
 
-                                      const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
-                                      const dependenteInativoB20 = row.celula === "B14" && (!possuiMaterialImpresso || desativadosOpcionais.B20);
-                                      const isFieldDeactivated = (row.celula !== 'B21' && desativadosOpcionais[row.celula]) || dependenteInativoB26 || dependenteInativoB20;
-                                      
-                                      const applyBlueHighlight = row.isFromGrafica && !isRowDisabled;
+                                           const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
+                                           const dependenteInativoB20 = row.celula === "B14" && (!possuiMaterialImpresso || desativadosOpcionais.B20);
+                                           const isFieldDeactivated = (row.celula !== 'B21' && desativadosOpcionais[row.celula]) || dependenteInativoB26 || dependenteInativoB20;
+                                           
+                                           const applyBlueHighlight = row.isFromGrafica && !isRowDisabled;
 
-                                      return (
-                                        <tr 
-                                          key={row.celula} 
-                                          className={`transition hover:bg-slate-50 ${isRowDisabled || isFieldDeactivated ? 'opacity-40 bg-slate-50 select-none text-slate-400' : ''}`}
-                                        >
-                                          <td className={`py-1.5 text-center text-[10px] font-bold font-sans w-12 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-[#3F48CC]'}`}>
-                                            {row.celula}
-                                          </td>
-                                          
-                                          <td className={`py-1.5 font-sans font-medium leading-relaxed pr-4 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {row.nome}
-                                          </td>
+                                           return (
+                                             <tr 
+                                               key={row.celula} 
+                                               className={`transition hover:bg-slate-50 ${isRowDisabled || isFieldDeactivated ? 'opacity-40 bg-slate-50 select-none text-slate-400' : ''}`}
+                                             >
+                                               <td className={`py-1.5 text-center text-[10px] font-bold font-sans w-9 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-[#3F48CC]'}`}>
+                                                 {row.celula}
+                                               </td>
+                                               <td className={`py-1.5 text-center text-xs font-medium font-sans w-12 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-[#3F48CC]'}`}>
+                                                 {COD_ORDEM_MAP[row.celula] || ""}
+                                               </td>
+                                               
+                                               <td className={`py-1.5 font-sans font-medium leading-relaxed pr-4 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                 <div>{row.nome}</div>
+                                                 {row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8) && (
+                                                   <div className="text-red-500 text-[11px] font-semibold mt-1">
+                                                     Data igual ou posterior ao envio de arquivos para impressão.
+                                                   </div>
+                                                 )}
+                                               </td>
 
-                                          {!ocultarCalculosPrincipal && (
-                                            <td className={`py-1.5 text-right w-36 min-w-[144px] max-w-[144px] ${modoEdicaoPrincipal ? 'font-normal text-sm text-slate-500' : 'font-bold'}`}>
-                                              {renderInicioCell(row, isRowDisabled, applyBlueHighlight)}
-                                            </td>
-                                          )}
+                                               {!ocultarCalculosPrincipal && (
+                                                 <td className={`py-1.5 text-right w-36 min-w-[144px] max-w-[144px] ${modoEdicaoPrincipal ? 'font-normal text-sm text-slate-500' : 'font-bold'}`}>
+                                                   {renderInicioCell(row, isRowDisabled, applyBlueHighlight)}
+                                                 </td>
+                                               )}
 
-                                          {!ocultarCalculosPrincipal && (
-                                            <td className={`py-1.5 text-right w-36 min-w-[144px] max-w-[144px] ${modoEdicaoPrincipal ? 'font-normal text-sm text-slate-500' : 'font-bold'}`}>
-                                              {renderFimCell(row, isRowDisabled, applyBlueHighlight)}
-                                            </td>
-                                          )}
-                                          
-                                          {modoEdicaoPrincipal && (
-                                            <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
-                                              <CampoData disabled={isRowDisabled || isFieldDeactivated} value={datasManuaisExtras[row.celula]?.inicio || obterDatasManuaisExtras()[row.celula]?.inicio || ""} onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], inicio: val } })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" />
-                                            </td>
-                                          )}
-                                          
-                                          {modoEdicaoPrincipal && (
-                                            <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
-                                              {row.formula_fim !== "-" ? (
-                                                <CampoData disabled={isRowDisabled || isFieldDeactivated} value={datasManuaisExtras[row.celula]?.fim || obterDatasManuaisExtras()[row.celula]?.fim || ""} onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" />
-                                              ) : (
-                                                <span className="text-slate-300">-</span>
-                                              )}
-                                            </td>
-                                          )}
+                                               {!ocultarCalculosPrincipal && (
+                                                 <td className={`py-1.5 text-right w-36 min-w-[144px] max-w-[144px] ${modoEdicaoPrincipal ? 'font-normal text-sm text-slate-500' : 'font-bold'}`}>
+                                                   {renderFimCell(row, isRowDisabled, applyBlueHighlight)}
+                                                 </td>
+                                               )}
+                                               
+                                               {modoEdicaoPrincipal && (
+                                                 <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
+                                                   <CampoData 
+                                                     disabled={isRowDisabled || isFieldDeactivated} 
+                                                     value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.inicio || obterDatasManuaisExtras()[row.celula]?.inicio || "")} 
+                                                     onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], inicio: val } })} 
+                                                     className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
+                                                   />
+                                                 </td>
+                                               )}
+                                               
+                                               {modoEdicaoPrincipal && (
+                                                 <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
+                                                   {row.formula_fim !== "-" ? (
+                                                     <CampoData 
+                                                       disabled={isRowDisabled || isFieldDeactivated} 
+                                                       value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.fim || obterDatasManuaisExtras()[row.celula]?.fim || "")} 
+                                                       onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } })} 
+                                                       className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
+                                                     />
+                                                   ) : (
+                                                     <span className="text-slate-300">-</span>
+                                                   )}
+                                                 </td>
+                                               )}
 
-                                          {!ocultarFormulas && (
-                                            <td className={`py-1.5 font-mono text-xs max-w-xs break-words text-right ${isRowDisabled || isFieldDeactivated ? 'text-slate-300' : 'text-slate-400'}`}>
-                                              {row.formula_inicio}
-                                              {row.formula_fim !== "-" && row.formula_fim !== row.formula_inicio && (
-                                                <>
-                                                  <br />
-                                                  {row.formula_fim}
-                                                </>
-                                              )}
-                                            </td>
-                                          )}
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
+                                               {!ocultarFormulas && (
+                                                 <td className={`py-1.5 font-mono text-xs max-w-xs break-words text-right ${isRowDisabled || isFieldDeactivated ? 'text-slate-300' : 'text-slate-400'}`}>
+                                                   {row.formula_inicio}
+                                                   {row.formula_fim !== "-" && row.formula_fim !== row.formula_inicio && (
+                                                     <>
+                                                       <br />
+                                                       {row.formula_fim}
+                                                     </>
+                                                   )}
+                                                 </td>
+                                               )}
+                                             </tr>
+                                           );
+                                         }
+                                       });
+                                     })()}
+                                   </tbody>
                                 </table>
                               </div>
                             )}
@@ -1923,17 +2047,21 @@ export default function App() {
                       {activeScenario === 'grafica' && (
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-                            <div className="border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full min-h-[112px]">
+                            <div className="border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col h-full min-h-[112px]">
                               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans leading-tight">
                                 Recebimento de base com gordura
                               </div>
-                              <div className="text-2xl font-bold mt-2 text-[#3F48CC] font-sans">{formatarDataBR(calculosGrafica.e1_limiteBaseDestaque)}</div>
+                              <div className="flex-1 flex items-center text-left">
+                                <div className="text-2xl font-bold text-[#3F48CC] font-sans">{formatarDataBR(calculosGrafica.e1_limiteBaseDestaque)}</div>
+                              </div>
                             </div>
-                            <div className={`border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full min-h-[112px] transition-opacity duration-200 ${!possuiEscrita ? 'opacity-40 bg-slate-50 border-slate-200 select-none' : ''}`}>
+                            <div className={`border border-[#C9CACC] border-l-[5px] border-l-[#FFF200] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col h-full min-h-[112px] transition-opacity duration-200 ${!possuiEscrita ? 'opacity-40 bg-slate-50 border-slate-200 select-none' : ''}`}>
                               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans leading-tight">
                                 Disponibilização dos itens de escrita antecipados
                               </div>
-                              <div className={`text-2xl font-bold mt-2 font-sans ${!possuiEscrita ? 'text-slate-400' : 'text-[#3F48CC]'}`}>{formatarDataBR(calculosGrafica.e2_dispEscritaDestaque)}</div>
+                              <div className="flex-1 flex items-center text-left">
+                                <div className={`text-2xl font-bold font-sans ${!possuiEscrita ? 'text-slate-400' : 'text-[#3F48CC]'}`}>{formatarDataBR(calculosGrafica.e2_dispEscritaDestaque)}</div>
+                              </div>
                             </div>
                             <div className="border border-[#C9CACC] border-l-[5px] border-l-[#3F48CC] p-4 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-start h-full min-h-[112px]">
                               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-sans mb-1.5 leading-tight">
@@ -2010,7 +2138,8 @@ export default function App() {
                                 <table className="w-full text-left border-collapse text-[13px] sm:text-sm">
                                   <thead>
                                     <tr className="border-b border-[#C9CACC] font-semibold uppercase tracking-wider text-slate-400 text-xs">
-                                      <th className="pb-2 w-12 text-center"></th>
+                                      <th className="pb-2 w-9 text-center"></th>
+                                      <th className="pb-2 w-12 text-center font-semibold text-slate-400 text-xs">CÓD.</th>
                                       <th className="pb-2 text-left">ETAPA</th>
                                       {!ocultarCalculosPrincipal && (
                                         <>
@@ -2028,171 +2157,195 @@ export default function App() {
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-[#C9CACC] text-slate-600 font-medium">
-                                    {["E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11"].map((cel) => {
-                                      const isRowDisabled = cel === "E5" && !possuiEscrita;
-                                      const isDifferent = cel === "E9" || cel === "E10" || cel === "E11";
-                                      const isEndEqual = calculosGrafica[`${cel.toLowerCase()}_inicio`] === calculosGrafica[cel.toLowerCase()];
-                                      const endColorClass = isEndEqual ? 'text-slate-900' : 'text-[#3F48CC]';
-                                      return (
-                                        <tr key={cel} className={`hover:bg-slate-50 transition-colors ${isRowDisabled ? 'opacity-40 bg-slate-50 select-none' : ''}`}>
-                                          <td className="py-2 text-center text-[10px] font-bold text-[#2E6F40] font-sans w-12">{cel}</td>
-                                          <td className={`py-1.5 font-sans font-medium ${isRowDisabled ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {cel === "E4" && "Recebimento de base institucional (inegociável, sem gordura)"}
-                                            {cel === "E5" && "Disponibilização dos itens de escrita antecipados"}
-                                            {cel === "E6" && "Envio do arquivo de dados (.csv)"}
-                                            {cel === "E7" && "Disponibilização dos cadernos de teste"}
-                                            {cel === "E8" && "Envio dos arquivos para impressão"}
-                                            {cel === "E9" && "Envio dos arquivos de dados variáveis (DVs)"}
-                                            {cel === "E10" && "Validação dos arquivos de DVs"}
-                                            {cel === "E11" && "Homologação dos arquivos de DVs"}
-                                          </td>
-                                          {!ocultarCalculosPrincipal && (
-                                            <>
-                                              <td className="py-1.5 text-right font-sans">
-                                                <span className={`block font-sans ${modoEdicaoPrincipal ? 'text-slate-500 font-normal text-xs' : isRowDisabled ? 'text-slate-400 font-semibold' : 'font-bold text-slate-900 text-xs sm:text-sm'}`}>
-                                                  {isRowDisabled ? "-" : formatarDataBR(calculosGrafica[`${cel.toLowerCase()}_inicio`])}
-                                                </span>
-                                              </td>
-                                              <td className="py-1.5 text-right font-sans">
-                                                <span className={`block font-sans ${modoEdicaoPrincipal ? 'text-slate-500 font-normal text-xs' : isRowDisabled ? 'text-slate-400 font-semibold' : `font-bold ${endColorClass} text-xs sm:text-sm`}`}>
-                                                  {isRowDisabled ? "-" : formatarDataBR(calculosGrafica[cel.toLowerCase()])}
-                                                </span>
-                                              </td>
-                                            </>
-                                          )}
-                                          {modoEdicaoPrincipal && (
-                                            <>
-                                              <td className="py-1 text-right font-sans">
-                                                {isRowDisabled || !isDifferent ? (
-                                                  <span className="text-slate-400 mr-8">-</span>
-                                                ) : (
-                                                  <CampoData value={datasManuaisPrincipal[`${cel}_inicio`] || obterDatasManuaisGrafica()[`${cel}_inicio`] || ""} onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [`${cel}_inicio`]: val })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans" />
-                                                )}
-                                              </td>
-                                              <td className="py-1 text-right font-sans">
-                                                {isRowDisabled ? (
-                                                  <span className="text-slate-400 mr-8">-</span>
-                                                ) : (
-                                                  <CampoData value={datasManuaisPrincipal[cel] || obterDatasManuaisCaed()[cel] || ""} onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [cel]: val })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans" />
-                                                )}
-                                              </td>
-                                            </>
-                                          )}
-                                          {!ocultarFormulas && (
-                                            <td className="py-1.5 font-mono text-xs text-slate-400 text-right">
-                                              <div className="text-[10px] text-slate-300 font-sans">
-                                                Início: {
-                                                  cel === "E4" || cel === "E5" || cel === "E6" || cel === "E7" || cel === "E8" ? "=Fim" :
-                                                  cel === "E9" ? "=E6+1" :
-                                                  cel === "E10" ? "=E9+1" :
-                                                  cel === "E11" ? "=E10+1" : ""
-                                                }
-                                              </div>
-                                              <div>
-                                                Fim: {
-                                                  cel === "E4" && "DIATRABALHO(E6;-10;Feriados!$B:$B)"
-                                                }{
-                                                  cel === "E5" && "DIATRABALHO(E4;3;Feriados!$B:$B)"
-                                                }{
-                                                  cel === "E6" && "DIATRABALHO(E9;-4;Feriados!$B:$B)"
-                                                }{
-                                                  cel === "E7" && "DIATRABALHO(E8;-2;Feriados!$B:$B)"
-                                                }{
-                                                  cel === "E8" && "Cópia de E9"
-                                                }{
-                                                  cel === "E9" && "DIATRABALHO(E10;-2;Feriados!$B:$B)"
-                                                }{
-                                                  cel === "E10" && "DIATRABALHO(E11;-2;Feriados!$B:$B)"
-                                                }{
-                                                  cel === "E11" && "DIATRABALHO(E12;-E14+4;Feriados!$B:$B)"
-                                                }
-                                              </div>
-                                            </td>
-                                          )}
-                                        </tr>
-                                      );
-                                    })}
+                                     {(() => {
+                                       const mainCells = ["E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11"];
+                                       const extras = obterDatasExtrasCalculadas();
+                                       const allGraficaRows = [
+                                         ...mainCells.map((cel) => ({ isMain: true as const, celula: cel, extraRow: null as any })),
+                                         ...extras.map((row: any) => ({ isMain: false as const, celula: row.celula, extraRow: row }))
+                                       ].sort((a, b) => getCodOrdemNumeric(a.celula) - getCodOrdemNumeric(b.celula));
 
+                                       return allGraficaRows.map((item) => {
+                                         if (item.isMain) {
+                                           const cel = item.celula;
+                                           const isRowDisabled = cel === "E5" && !possuiEscrita;
+                                           const isDifferent = cel === "E9" || cel === "E10" || cel === "E11";
+                                           return (
+                                             <tr key={cel} className={`hover:bg-slate-50 transition-colors ${isRowDisabled ? 'opacity-40 bg-slate-50 select-none' : ''}`}>
+                                               <td className="py-2 text-center text-[10px] font-bold text-[#2E6F40] font-sans w-9">{cel}</td>
+                                               <td className={`py-2 text-center text-xs font-medium font-sans w-12 ${isRowDisabled ? 'text-slate-400' : 'text-[#2E6F40]'}`}>{COD_ORDEM_MAP[cel] || ""}</td>
+                                               <td className={`py-1.5 font-sans font-medium ${isRowDisabled ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                 {cel === "E4" && "Recebimento de base institucional (inegociável, sem gordura)"}
+                                                 {cel === "E5" && "Disponibilização dos itens de escrita antecipados"}
+                                                 {cel === "E6" && "Envio do arquivo de dados (.csv)"}
+                                                 {cel === "E7" && "Disponibilização dos cadernos de testes"}
+                                                 {cel === "E8" && "Envio dos arquivos para impressão"}
+                                                 {cel === "E9" && "Envio dos arquivos de dados variáveis (DVs)"}
+                                                 {cel === "E10" && "Validação dos arquivos de DVs"}
+                                                 {cel === "E11" && "Homologação dos arquivos de DVs"}
+                                               </td>
+                                               {!ocultarCalculosPrincipal && (
+                                                 <>
+                                                   <td className="py-1.5 text-right font-sans">
+                                                     <span className={`block font-sans ${isRowDisabled ? 'text-slate-400 font-normal' : 'font-normal text-slate-900 text-xs sm:text-sm'}`}>
+                                                       {isRowDisabled ? "-" : formatarDataBR(calculosGrafica[`${cel.toLowerCase()}_inicio`])}
+                                                     </span>
+                                                   </td>
+                                                   <td className="py-1.5 text-right font-sans">
+                                                     <span className={`block font-sans ${isRowDisabled ? 'text-slate-400 font-normal' : 'font-normal text-slate-900 text-xs sm:text-sm'}`}>
+                                                       {isRowDisabled ? "-" : formatarDataBR(calculosGrafica[cel.toLowerCase()])}
+                                                     </span>
+                                                   </td>
+                                                 </>
+                                               )}
+                                               {modoEdicaoPrincipal && (
+                                                 <>
+                                                   <td className="py-1 text-right font-sans">
+                                                     {isRowDisabled || !isDifferent ? (
+                                                       <span className="text-slate-400 mr-8">-</span>
+                                                     ) : (
+                                                       <CampoData value={datasManuaisPrincipal[`${cel}_inicio`] || obterDatasManuaisGrafica()[`${cel}_inicio`] || ""} onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [`${cel}_inicio`]: val })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans" />
+                                                     )}
+                                                   </td>
+                                                   <td className="py-1 text-right font-sans">
+                                                     {isRowDisabled ? (
+                                                       <span className="text-slate-400 mr-8">-</span>
+                                                     ) : (
+                                                       <CampoData value={datasManuaisPrincipal[cel] || obterDatasManuaisGrafica()[cel] || ""} onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [cel]: val })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans" />
+                                                     )}
+                                                   </td>
+                                                 </>
+                                               )}
+                                               {!ocultarFormulas && (
+                                                 <td className="py-1.5 font-mono text-xs text-slate-400 text-right">
+                                                   <div className="text-[10px] text-slate-300 font-sans">
+                                                     Início: {
+                                                       cel === "E4" || cel === "E5" || cel === "E6" || cel === "E7" || cel === "E8" ? "=Fim" :
+                                                       cel === "E9" ? "=E6+1" :
+                                                       cel === "E10" ? "=E9+1" :
+                                                       cel === "E11" ? "=E10+1" : ""
+                                                     }
+                                                   </div>
+                                                   <div>
+                                                     Fim: {
+                                                       cel === "E4" && "DIATRABALHO(E6;-10;Feriados!$B:$B)"
+                                                     }{
+                                                       cel === "E5" && "DIATRABALHO(E4;3;Feriados!$B:$B)"
+                                                     }{
+                                                       cel === "E6" && "DIATRABALHO(E9;-4;Feriados!$B:$B)"
+                                                     }{
+                                                       cel === "E7" && "DIATRABALHO(E8;-2;Feriados!$B:$B)"
+                                                     }{
+                                                       cel === "E8" && "Cópia de E9"
+                                                     }{
+                                                       cel === "E9" && "DIATRABALHO(E10;-2;Feriados!$B:$B)"
+                                                     }{
+                                                       cel === "E10" && "DIATRABALHO(E11;-2;Feriados!$B:$B)"
+                                                     }{
+                                                       cel === "E11" && "DIATRABALHO(E12;-E14+4;Feriados!$B:$B)"
+                                                     }
+                                                   </div>
+                                                 </td>
+                                               )}
+                                             </tr>
+                                           );
+                                         } else {
+                                           const row: any = item.extraRow;
+                                           let isRowDisabled = false;
+                                           if (evaluationType === 'somativa' || evaluationType === 'formativa') {
+                                               if (row.isB5B9 && !constaCaedAplicacao) {
+                                                 isRowDisabled = true;
+                                               }
+                                               if (row.isB8 && !possuiEscrita) {
+                                                 isRowDisabled = true;
+                                               }
+                                               if (row.isMaterialImpresso && !possuiMaterialImpresso) {
+                                                 isRowDisabled = true;
+                                               }
+                                           }
 
+                                           const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
+                                           const dependenteInativoB20 = row.celula === "B14" && (!possuiMaterialImpresso || desativadosOpcionais.B20);
+                                           const isFieldDeactivated = (row.celula !== 'B21' && desativadosOpcionais[row.celula]) || dependenteInativoB26 || dependenteInativoB20;
+                                           
+                                           const applyBlueHighlight = row.isFromGrafica && !isRowDisabled;
 
-                                    {/* B-rows */}
-                                    {obterDatasExtrasCalculadas().map((row) => {
-                                      let isRowDisabled = false;
-                                      if (evaluationType === 'somativa' || evaluationType === 'formativa') {
-                                          if (row.isB5B9 && !constaCaedAplicacao) {
-                                            isRowDisabled = true;
-                                          }
-                                          if (row.isB8 && !possuiEscrita) {
-                                            isRowDisabled = true;
-                                          }
-                                          if (row.isMaterialImpresso && !possuiMaterialImpresso) {
-                                            isRowDisabled = true;
-                                          }
-                                      }
+                                           return (
+                                             <tr 
+                                               key={row.celula} 
+                                               className={`transition hover:bg-slate-50 ${isRowDisabled || isFieldDeactivated ? 'opacity-40 bg-slate-50 select-none text-slate-400' : ''}`}
+                                             >
+                                               <td className={`py-1.5 text-center text-[10px] font-bold font-sans w-9 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-[#3F48CC]'}`}>
+                                                 {row.celula}
+                                               </td>
+                                               <td className={`py-1.5 text-center text-xs font-medium font-sans w-12 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-[#3F48CC]'}`}>
+                                                 {COD_ORDEM_MAP[row.celula] || ""}
+                                               </td>
+                                               
+                                               <td className={`py-1.5 font-sans font-medium leading-relaxed pr-4 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                 <div>{row.nome}</div>
+                                                 {row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8) && (
+                                                   <div className="text-red-500 text-[11px] font-semibold mt-1">
+                                                     Data igual ou posterior ao envio de arquivos para impressão.
+                                                   </div>
+                                                 )}
+                                               </td>
 
-                                      // Propagação lógica: se o B26 estiver inativado na tabela, inativa b25, b27 e b8 automaticamente. E se B20 estiver inativado na tabela, inativa B14 automaticamente.
-                                      const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
-                                      const dependenteInativoB20 = row.celula === "B14" && (!possuiMaterialImpresso || desativadosOpcionais.B20);
-                                      const isFieldDeactivated = (row.celula !== 'B21' && desativadosOpcionais[row.celula]) || dependenteInativoB26 || dependenteInativoB20;
-                                      
-                                      const applyBlueHighlight = row.isFromGrafica && !isRowDisabled;
+                                               {!ocultarCalculosPrincipal && (
+                                                 <td className={`py-1.5 text-right w-36 min-w-[144px] max-w-[144px] ${modoEdicaoPrincipal ? 'font-normal text-sm text-slate-500' : 'font-bold'}`}>
+                                                   {renderInicioCell(row, isRowDisabled, applyBlueHighlight)}
+                                                 </td>
+                                               )}
 
-                                      return (
-                                        <tr 
-                                          key={row.celula} 
-                                          className={`transition hover:bg-slate-50 ${isRowDisabled || isFieldDeactivated ? 'opacity-40 bg-slate-50 select-none text-slate-400' : ''}`}
-                                        >
-                                          <td className={`py-1.5 text-center text-[10px] font-bold font-sans w-12 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-[#3F48CC]'}`}>
-                                            {row.celula}
-                                          </td>
-                                          
-                                          <td className={`py-1.5 font-sans font-medium leading-relaxed pr-4 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {row.nome}
-                                          </td>
+                                               {!ocultarCalculosPrincipal && (
+                                                 <td className={`py-1.5 text-right w-36 min-w-[144px] max-w-[144px] ${modoEdicaoPrincipal ? 'font-normal text-sm text-slate-500' : 'font-bold'}`}>
+                                                   {renderFimCell(row, isRowDisabled, applyBlueHighlight)}
+                                                 </td>
+                                               )}
+                                               
+                                               {modoEdicaoPrincipal && (
+                                                 <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
+                                                   <CampoData 
+                                                     disabled={isRowDisabled || isFieldDeactivated} 
+                                                     value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.inicio || obterDatasManuaisExtras()[row.celula]?.inicio || "")} 
+                                                     onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], inicio: val } })} 
+                                                     className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
+                                                   />
+                                                 </td>
+                                               )}
+                                               
+                                               {modoEdicaoPrincipal && (
+                                                 <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
+                                                   {row.formula_fim !== "-" ? (
+                                                     <CampoData 
+                                                       disabled={isRowDisabled || isFieldDeactivated} 
+                                                       value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.fim || obterDatasManuaisExtras()[row.celula]?.fim || "")} 
+                                                       onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } })} 
+                                                       className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
+                                                     />
+                                                   ) : (
+                                                     <span className="text-slate-300">-</span>
+                                                   )}
+                                                 </td>
+                                               )}
 
-                                          {!ocultarCalculosPrincipal && (
-                                            <td className={`py-1.5 text-right w-36 min-w-[144px] max-w-[144px] ${modoEdicaoPrincipal ? 'font-normal text-sm text-slate-500' : 'font-bold'}`}>
-                                              {renderInicioCell(row, isRowDisabled, applyBlueHighlight)}
-                                            </td>
-                                          )}
-
-                                          {!ocultarCalculosPrincipal && (
-                                            <td className={`py-1.5 text-right w-36 min-w-[144px] max-w-[144px] ${modoEdicaoPrincipal ? 'font-normal text-sm text-slate-500' : 'font-bold'}`}>
-                                              {renderFimCell(row, isRowDisabled, applyBlueHighlight)}
-                                            </td>
-                                          )}
-                                          
-                                          {modoEdicaoPrincipal && (
-                                            <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
-                                              <CampoData disabled={isRowDisabled || isFieldDeactivated} value={datasManuaisExtras[row.celula]?.inicio || obterDatasManuaisExtras()[row.celula]?.inicio || ""} onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], inicio: val } })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" />
-                                            </td>
-                                          )}
-                                          
-                                          {modoEdicaoPrincipal && (
-                                            <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
-                                              {row.formula_fim !== "-" ? (
-                                                <CampoData disabled={isRowDisabled || isFieldDeactivated} value={datasManuaisExtras[row.celula]?.fim || obterDatasManuaisExtras()[row.celula]?.fim || ""} onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" />
-                                              ) : (
-                                                <span className="text-slate-300">-</span>
-                                              )}
-                                            </td>
-                                          )}
-
-                                          {!ocultarFormulas && (
-                                            <td className={`py-1.5 font-mono text-xs max-w-xs break-words text-right ${isRowDisabled || isFieldDeactivated ? 'text-slate-300' : 'text-slate-400'}`}>
-                                              {row.formula_inicio}
-                                              {row.formula_fim !== "-" && row.formula_fim !== row.formula_inicio && (
-                                                <>
-                                                  <br />
-                                                  {row.formula_fim}
-                                                </>
-                                              )}
-                                            </td>
-                                          )}
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
+                                               {!ocultarFormulas && (
+                                                 <td className={`py-1.5 font-mono text-xs max-w-xs break-words text-right ${isRowDisabled || isFieldDeactivated ? 'text-slate-300' : 'text-slate-400'}`}>
+                                                   {row.formula_inicio}
+                                                   {row.formula_fim !== "-" && row.formula_fim !== row.formula_inicio && (
+                                                     <>
+                                                       <br />
+                                                       {row.formula_fim}
+                                                     </>
+                                                   )}
+                                                 </td>
+                                               )}
+                                             </tr>
+                                           );
+                                         }
+                                       });
+                                     })()}
+                                   </tbody>
                                 </table>
                               </div>
                             )}
@@ -2288,7 +2441,7 @@ export default function App() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#C9CACC] text-slate-600 font-medium">
-                            {obterDatasExtrasCalculadas().map((row) => {
+                            {[...obterDatasExtrasCalculadas()].sort((a, b) => getCodOrdemNumeric(a.celula) - getCodOrdemNumeric(b.celula)).map((row: any) => {
                               let isRowDisabled = false;
                               if (evaluationType === 'somativa' || evaluationType === 'formativa') {
                                   if (row.isB5B9 && !constaCaedAplicacao) {
@@ -2319,7 +2472,12 @@ export default function App() {
                                   </td>
                                   
                                   <td className={`py-1.5 font-sans font-medium leading-relaxed pr-4 ${isRowDisabled || isFieldDeactivated ? 'text-slate-400' : 'text-slate-500'}`}>
-                                    {row.nome}
+                                    <div>{row.nome}</div>
+                                    {row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8) && (
+                                      <div className="text-red-500 text-[11px] font-semibold mt-1">
+                                        Data igual ou posterior ao envio de arquivos para impressão.
+                                      </div>
+                                    )}
                                   </td>
 
                                   {!ocultarCalculosExtras && (
@@ -2336,14 +2494,24 @@ export default function App() {
                                   
                                   {modoEdicaoExtras && (
                                     <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
-                                      <CampoData disabled={isRowDisabled || isFieldDeactivated} value={datasManuaisExtras[row.celula]?.inicio || ""} onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], inicio: val } })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" />
+                                      <CampoData 
+                                        disabled={isRowDisabled || isFieldDeactivated} 
+                                        value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.inicio || obterDatasManuaisExtras()[row.celula]?.inicio || "")} 
+                                        onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], inicio: val } })} 
+                                        className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
+                                      />
                                     </td>
                                   )}
                                   
                                   {modoEdicaoExtras && (
                                     <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
                                       {row.formula_fim !== "-" ? (
-                                        <CampoData disabled={isRowDisabled || isFieldDeactivated} value={datasManuaisExtras[row.celula]?.fim || ""} onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" />
+                                        <CampoData 
+                                          disabled={isRowDisabled || isFieldDeactivated} 
+                                          value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.fim || obterDatasManuaisExtras()[row.celula]?.fim || "")} 
+                                          onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } })} 
+                                          className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
+                                        />
                                       ) : (
                                         <span className="text-slate-300">-</span>
                                       )}
@@ -2373,8 +2541,23 @@ export default function App() {
               </div>
               )}
 
+              {/* Campo de Texto de Anotações com Barra de Edição (abaixo de todas as tabelas e acima dos botões de exportação) */}
+              <div className="space-y-2 pt-6 pb-2 border-t border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-sans flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-[#3F48CC] rounded-full inline-block"></span>
+                    Anotações Complementares
+                  </label>
+                </div>
+                <RichTextEditor
+                  value={observacoes}
+                  onChange={(val) => setObservacoes(val)}
+                  disabled={!isSidebarEnabled}
+                />
+              </div>
+
               {/* Botões de Exportação (.xlsb e .pdf) */}
-              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2 pb-1">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 pb-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -2385,7 +2568,10 @@ export default function App() {
                       evaluationType,
                       activeScenario,
                       dataEntrega,
-                      prazoContratual,
+                      prazoContratual: prazoContratualOriginal !== '' ? prazoContratualOriginal : prazoContratual,
+                      prazoComFator: prazoComFatorOriginal !== '' ? prazoComFatorOriginal : prazoComFator,
+                      prazoContratualEditado,
+                      prazoComFatorEditado,
                       constaCaedAplicacao,
                       possuiEscrita,
                       possuiMaterialImpresso,
@@ -2402,7 +2588,8 @@ export default function App() {
                       modoEdicaoPrincipal,
                       modoEdicaoExtras,
                       ocultarCalculosPrincipal,
-                      ocultarCalculosExtras
+                      ocultarCalculosExtras,
+                      observacoes
                     });
                   }}
                   disabled={!isSidebarEnabled}
@@ -2427,7 +2614,10 @@ export default function App() {
                       evaluationType,
                       activeScenario,
                       dataEntrega,
-                      prazoContratual,
+                      prazoContratual: prazoContratualOriginal !== '' ? prazoContratualOriginal : prazoContratual,
+                      prazoComFator: prazoComFatorOriginal !== '' ? prazoComFatorOriginal : prazoComFator,
+                      prazoContratualEditado,
+                      prazoComFatorEditado,
                       constaCaedAplicacao,
                       possuiEscrita,
                       possuiMaterialImpresso,
@@ -2444,7 +2634,8 @@ export default function App() {
                       modoEdicaoPrincipal,
                       modoEdicaoExtras,
                       ocultarCalculosPrincipal,
-                      ocultarCalculosExtras
+                      ocultarCalculosExtras,
+                      observacoes
                     });
                   }}
                   disabled={!isSidebarEnabled}
