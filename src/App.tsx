@@ -5,12 +5,6 @@ import { exportToPdf } from './utils/exportPdf';
 import { COD_ORDEM_MAP, getCodOrdemNumeric } from './utils/codOrdem';
 import { RichTextEditor } from './components/RichTextEditor';
 
-/**
- * Data da versão publicada.
- * Atualize manualmente somente quando houver um novo deploy de produção.
- */
-const DATA_ULTIMA_VERSAO = '05/08/2026';
-
 // Feriados padrão nacionais e regionais (CAEd) - Adaptados para 2025/2026
 const FERIADOS_PADRAO = [
   // 2025
@@ -463,9 +457,7 @@ export default function App() {
     const E10_fim = valPrincipalFim("E10", e10);
     const e9 = calcularDiaTrabalho(E10_fim, -2);
     const E9_fim = valPrincipalFim("E9", e9);
-    const e8 = E9_fim;
-    const E8_fim = valPrincipalFim("E8", e8);
-    const e7 = calcularDiaTrabalho(E8_fim, -2);
+    const e7 = calcularDiaTrabalho(E9_fim, -2);
     const E7_fim = valPrincipalFim("E7", e7);
     const e6 = calcularDiaTrabalho(E9_fim, -4);
     const E6_fim = valPrincipalFim("E6", e6);
@@ -481,7 +473,6 @@ export default function App() {
     const E5_inicio = valPrincipalInicio("E5", E5_fim);
     const E6_inicio = valPrincipalInicio("E6", E6_fim);
     const E7_inicio = valPrincipalInicio("E7", E7_fim);
-    const E8_inicio = valPrincipalInicio("E8", E8_fim);
     const E9_inicio = valPrincipalInicio("E9", calcularDiaTrabalho(E6_fim, 1));
     const E10_inicio = valPrincipalInicio("E10", calcularDiaTrabalho(E9_fim, 1));
     const E11_inicio = valPrincipalInicio("E11", calcularDiaTrabalho(E10_fim, 1));
@@ -522,7 +513,6 @@ export default function App() {
       e5: E5_fim,
       e6: E6_fim,
       e7: E7_fim,
-      e8: E8_fim,
       e9: E9_fim,
       e10: E10_fim,
       e11: E11_fim,
@@ -531,7 +521,6 @@ export default function App() {
       e5_inicio: E5_inicio,
       e6_inicio: E6_inicio,
       e7_inicio: E7_inicio,
-      e8_inicio: E8_inicio,
       e9_inicio: E9_inicio,
       e10_inicio: E10_inicio,
       e11_inicio: E11_inicio,
@@ -590,9 +579,7 @@ export default function App() {
     const e9_fim_calc = e10_fim_manual ? calcularDiaTrabalho(e10_fim_manual, -2) : "";
     const e9_fim_manual = (datasManuaisPrincipal["E9"] && datasManuaisPrincipal["E9"] !== "1889-01-01") ? datasManuaisPrincipal["E9"] : e9_fim_calc;
 
-    const e8_fim_manual = (datasManuaisPrincipal["E8"] && datasManuaisPrincipal["E8"] !== "1889-01-01") ? datasManuaisPrincipal["E8"] : e9_fim_manual;
-
-    const e7_fim_calc = e8_fim_manual ? calcularDiaTrabalho(e8_fim_manual, -2) : "";
+    const e7_fim_calc = e9_fim_manual ? calcularDiaTrabalho(e9_fim_manual, -2) : "";
     const e7_fim_manual = (datasManuaisPrincipal["E7"] && datasManuaisPrincipal["E7"] !== "1889-01-01") ? datasManuaisPrincipal["E7"] : e7_fim_calc;
 
     const e6_fim_calc = e9_fim_manual ? calcularDiaTrabalho(e9_fim_manual, -4) : "";
@@ -608,7 +595,6 @@ export default function App() {
     const e5_inicio_manual = datasManuaisPrincipal["E5_inicio"] || e5_fim_manual;
     const e6_inicio_manual = datasManuaisPrincipal["E6_inicio"] || e6_fim_manual;
     const e7_inicio_manual = datasManuaisPrincipal["E7_inicio"] || e7_fim_manual;
-    const e8_inicio_manual = datasManuaisPrincipal["E8_inicio"] || e8_fim_manual;
     const e9_inicio_manual = datasManuaisPrincipal["E9_inicio"] || (e6_fim_manual ? calcularDiaTrabalho(e6_fim_manual, 1) : "");
     const e10_inicio_manual = datasManuaisPrincipal["E10_inicio"] || (e9_fim_manual ? calcularDiaTrabalho(e9_fim_manual, 1) : "");
     const e11_inicio_manual = datasManuaisPrincipal["E11_inicio"] || (e10_fim_manual ? calcularDiaTrabalho(e10_fim_manual, 1) : "");
@@ -623,8 +609,6 @@ export default function App() {
       E10_inicio: e10_inicio_manual,
       E9: e9_fim_manual,
       E9_inicio: e9_inicio_manual,
-      E8: e8_fim_manual,
-      E8_inicio: e8_inicio_manual,
       E7: e7_fim_manual,
       E7_inicio: e7_inicio_manual,
       E6: e6_fim_manual,
@@ -647,7 +631,7 @@ export default function App() {
       return fallback;
     };
 
-    const b15_m = getM("B15", "inicio", b15ManualInicio || manuaisGrafica.E8 || "");
+    const b15_m = getM("B15", "inicio", b15ManualInicio || "");
     const b5_m = getM("B5", "inicio", b5ManualInicio || (b15_m ? calcularDiaTrabalho(b15_m, -4) : ""));
     const b6_m = getM("B6", "inicio", b5_m);
     const b7_m = getM("B7", "inicio", b6_m ? adicionarDiasCalendario(b6_m, 7) : "");
@@ -689,7 +673,7 @@ export default function App() {
       B19: { inicio: b19_m, fim: b19_m },
       B20: { inicio: b20_m, fim: b20_m },
       B21: { inicio: b21_m, fim: t_entrega },
-      B22: { inicio: b22_m, fim: b22_m },
+      B22: { inicio: b22_m, fim: getM("B22", "fim", b22_m ? adicionarDiasCalendario(b22_m, 1) : "") },
       B23: { inicio: b23_m, fim: getM("B23", "fim", b23ManualFim || "") },
       B24: { inicio: getM("B24", "inicio", b24ManualInicio || ""), fim: "-" },
       B25: { inicio: b25_m, fim: b25_m },
@@ -703,20 +687,6 @@ export default function App() {
       "B9+": { inicio: b9_m, fim: b9_plus_m },
     };
   };
-
-  const prevE8Ref = useRef('');
-
-  useEffect(() => {
-    const e8Val = calculosGrafica.e8;
-    const isValidE8 = e8Val && e8Val !== "1889-01-01" && e8Val !== "1900-01-01" && e8Val !== "";
-    
-    if (isValidE8) {
-      if (!b15ManualInicio || b15ManualInicio === prevE8Ref.current) {
-        setB15ManualInicio(e8Val);
-      }
-    }
-    prevE8Ref.current = e8Val || '';
-  }, [calculosGrafica.e8, b15ManualInicio]);
 
   const adicionarFeriado = (e) => {
     e.preventDefault();
@@ -760,7 +730,7 @@ export default function App() {
 
     const e8_or_c8 = isCaed
       ? (datasManuaisPrincipal["C8"] || manuaisCaed.C8 || calculosCaed.c8 || "1889-01-01")
-      : (datasManuaisPrincipal["E8"] || manuaisGrafica.E8 || calculosGrafica.e8 || "1889-01-01");
+      : (datasManuaisExtras["B15"]?.inicio || b15ManualInicio || calculosCaed.b15 || "1889-01-01");
 
     const c6_or_e6 = isCaed
       ? (datasManuaisPrincipal["C6"] || manuaisCaed.C6 || calculosCaed.c6 || "1889-01-01")
@@ -854,7 +824,7 @@ export default function App() {
       const b17_fim = b17_inicio;
       
       const b22_inicio = isBlank(finalB5Inicio) ? (isBlank(c5_or_e5) ? "1889-01-01" : adicionarDiasCalendario(c5_or_e5, 7)) : adicionarDiasCalendario(finalB5Inicio, 7);
-      const b22_fim = b22_inicio;
+      const b22_fim = isBlank(b22_inicio) || b22_inicio === "1889-01-01" ? "1889-01-01" : adicionarDiasCalendario(b22_inicio, 1);
       
       // B25 e B27 herdam o estado de ativação do B26 para evitar propagação de datas nulas
       const b25_inicio_raw = isBlank(b26_inicio_calc) ? "1889-01-01" : calcularDiaTrabalho(b26_inicio_calc, -33);
@@ -884,7 +854,7 @@ export default function App() {
         { celula: "B13", nome: "Disponibilização dos materiais de capacitação", formula_inicio: "=SE(C20=\"\";DIATRABALHO(C15;-1;Feriados!$B$2:$B$103);DIATRABALHO(C14;-1;Feriados!$B$2:$B$103))", formula_fim: "=C13", inicio: b13_inicio, fim: b13_fim, isFromGrafica: true },
         { celula: "B14", nome: "Envio dos materiais de capacitação antecipados para impressão", formula_inicio: "=DIATRABALHO(C20;-12;Feriados!$B2:$B103)", formula_fim: "=C14", inicio: b14_inicio, fim: b14_fim, isMaterialImpresso: true, isFromGrafica: false, excedeuE8: b14_excedeuE8 },
         { celula: "B15", nome: "Envio dos arquivos para impressão", formula_inicio: "Cópia de E9", formula_fim: "-", inicio: b15_inicio_calc, fim: b15_inicio_calc, isFromGrafica: true },
-        { celula: "B16", nome: "Envio dos arquivos para impressão (contratual)", formula_inicio: "=E8 (sem margem)", formula_fim: "=C16", inicio: b16_sem_margem, fim: b16_sem_margem, isFromGrafica: true },
+        { celula: "B16", nome: "Envio dos arquivos para impressão (contratual)", formula_inicio: "=B15 (sem margem)", formula_fim: "=C16", inicio: b16_sem_margem, fim: b16_sem_margem, isFromGrafica: true },
         { celula: "B5", nome: "Solicitação de leiaute de base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(B15;-4;Feriados!$B:$B)", formula_fim: "=C5", inicio: finalB5Inicio, fim: finalB5Fim, isB5B9: true, isFromGrafica: true },
         { celula: "B9", nome: "Envio da base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(B5;11;Feriados!$B:$B)", formula_fim: "=C9", inicio: finalB9Inicio, fim: finalB9Fim, isB5B9: true, isFromGrafica: true },
         { celula: "B9+", nome: "Publicação do Card Acompanhamento da Inscrição e Curso no CAEd Aplicação", formula_inicio: "=D9", formula_fim: "=DIATRABALHO(D9;4;Feriados!$B:$B)", inicio: b9_plus_fim, fim: b9_plus_fim, isB5B9: true, isFromGrafica: true },
@@ -893,7 +863,7 @@ export default function App() {
         { celula: "B19", nome: "Entrega dos testes adaptados na gráfica (braile, AD e/ou libras)", formula_inicio: "=DIATRABALHO(E12;-20)", formula_fim: "=C19", inicio: b19_inicio, fim: b19_fim, isFromGrafica: true },
         { celula: "B20", nome: "Entrega dos materiais de capacitação antecipados nos polos", formula_inicio: "Preenchimento Opcional", formula_fim: "-", inicio: activeB20, fim: activeB20, manualB20: true, isMaterialImpresso: true, isFromGrafica: false },
         { celula: "B21", nome: "Entrega dos materiais nos polos", formula_inicio: "=E12", formula_fim: "-", inicio: b21_inicio, fim: b21_fim, manualB21: true, isFromGrafica: true },
-        { celula: "B22", nome: "Envio de tutorial - Cadastro de profissionais", formula_inicio: "=C5+7", formula_fim: "=C22", inicio: b22_inicio, fim: b22_fim, isFromGrafica: false },
+        { celula: "B22", nome: "Envio de tutorial - Cadastro de profissionais", formula_inicio: "=C5+7", formula_fim: "=C22+1", inicio: b22_inicio, fim: b22_fim, isFromGrafica: false },
         { celula: "B23", nome: "Aplicação dos cadernos de testes impressos", formula_inicio: "Preenchimento no menu lateral", formula_fim: "Preenchimento no menu lateral", inicio: b23ManualInicio, fim: b23ManualFim, isFromGrafica: false, isSincronizadoTopo: true },
         { celula: "B24", nome: "Aplicação dos questionários digitais", formula_inicio: "Preenchimento Opcional", formula_fim: "-", inicio: activeB24, fim: "-", manualB24: true, isFromGrafica: false },
         { celula: "B25", nome: "Cadastramento das rotas", formula_inicio: "=DIATRABALHO(C26;-33;Feriados!$B$2:$B$103)", formula_fim: "=C25", inicio: b25_inicio, fim: b25_fim, isFromGrafica: false, dependenteB26: true },
@@ -1061,14 +1031,14 @@ export default function App() {
       let value = "";
       let onChangeFn = null;
       if (row.celula === 'B15') { 
-        value = b15ManualInicio || (calculosGrafica.e8 && calculosGrafica.e8 !== "1889-01-01" ? calculosGrafica.e8 : ""); 
+        value = b15ManualInicio || ""; 
         onChangeFn = setB15ManualInicio; 
       }
-      else if (row.celula === 'B5') { value = b5ManualInicio; onChangeFn = setB5ManualInicio; }
-      else if (row.celula === 'B23') { value = b23ManualInicio; onChangeFn = null; }
-      else if (row.celula === 'H5') { value = h5ManualInicio; onChangeFn = setH5ManualInicio; }
-      else if (row.celula === 'H11') { value = h11ManualInicio; onChangeFn = setH11ManualInicio; }
-      else if (row.celula === 'H12') { value = h12ManualInicio; onChangeFn = setH12ManualInicio; }
+      else if (row.celula === 'B5') { value = b5ManualInicio || ""; onChangeFn = setB5ManualInicio; }
+      else if (row.celula === 'B23') { value = b23ManualInicio || ""; onChangeFn = null; }
+      else if (row.celula === 'H5') { value = h5ManualInicio || ""; onChangeFn = setH5ManualInicio; }
+      else if (row.celula === 'H11') { value = h11ManualInicio || ""; onChangeFn = setH11ManualInicio; }
+      else if (row.celula === 'H12') { value = h12ManualInicio || ""; onChangeFn = setH12ManualInicio; }
 
       return (
         <div className="flex items-center justify-end gap-2.5">
@@ -1168,7 +1138,7 @@ export default function App() {
     if (row.isSincronizadoTopo) {
       let value = "";
       let onChangeFn = null;
-      if (row.celula === 'H11') { value = h11ManualFim; onChangeFn = setH11ManualFim; }
+      if (row.celula === 'H11') { value = h11ManualFim || ""; onChangeFn = setH11ManualFim; }
 
       return (
         <div className="flex items-center justify-end gap-2.5">
@@ -1686,7 +1656,7 @@ export default function App() {
                   Fundação CAEd
                 </div>
                 <div className="inline-flex items-center gap-2 border border-[#FF3471] px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-white rounded bg-[#FF3471] font-sans">
-                  Última atualização: {DATA_ULTIMA_VERSAO}
+                  Última atualização: 07/08/2026
                 </div>
               </div>
             </div>
@@ -1910,7 +1880,7 @@ export default function App() {
                                                        <span className="text-slate-400 mr-8">-</span>
                                                      ) : (
                                                        <CampoData
-                                                         value={datasManuaisPrincipal["C8_inicio"] || obterDatasManuaisCaed().C8_inicio || ""}
+                                                         value={datasManuaisPrincipal["C8_inicio"] || ""}
                                                          onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, "C8_inicio": val })}
                                                          className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans"
                                                        />
@@ -1921,7 +1891,7 @@ export default function App() {
                                                        <span className="text-slate-400 mr-8">-</span>
                                                      ) : (
                                                        <CampoData
-                                                         value={datasManuaisPrincipal[cel] || obterDatasManuaisCaed()[cel] || ""}
+                                                         value={datasManuaisPrincipal[cel] || ""}
                                                          onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [cel]: val })}
                                                          className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans"
                                                        />
@@ -1998,7 +1968,7 @@ export default function App() {
                                                  <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
                                                    <CampoData 
                                                      disabled={isRowDisabled || isFieldDeactivated} 
-                                                     value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.inicio || obterDatasManuaisExtras()[row.celula]?.inicio || "")} 
+                                                     value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.inicio || "")} 
                                                      onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], inicio: val } })} 
                                                      className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
                                                    />
@@ -2010,7 +1980,7 @@ export default function App() {
                                                    {row.formula_fim !== "-" ? (
                                                      <CampoData 
                                                        disabled={isRowDisabled || isFieldDeactivated} 
-                                                       value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.fim || obterDatasManuaisExtras()[row.celula]?.fim || "")} 
+                                                       value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.fim || "")} 
                                                        onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } })} 
                                                        className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
                                                      />
@@ -2158,7 +2128,7 @@ export default function App() {
                                   </thead>
                                   <tbody className="divide-y divide-[#C9CACC] text-slate-600 font-medium">
                                      {(() => {
-                                       const mainCells = ["E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11"];
+                                       const mainCells = ["E4", "E5", "E6", "E7", "E9", "E10", "E11"];
                                        const extras = obterDatasExtrasCalculadas();
                                        const allGraficaRows = [
                                          ...mainCells.map((cel) => ({ isMain: true as const, celula: cel, extraRow: null as any })),
@@ -2179,7 +2149,6 @@ export default function App() {
                                                  {cel === "E5" && "Disponibilização dos itens de escrita antecipados"}
                                                  {cel === "E6" && "Envio do arquivo de dados (.csv)"}
                                                  {cel === "E7" && "Disponibilização dos cadernos de testes"}
-                                                 {cel === "E8" && "Envio dos arquivos para impressão"}
                                                  {cel === "E9" && "Envio dos arquivos de dados variáveis (DVs)"}
                                                  {cel === "E10" && "Validação dos arquivos de DVs"}
                                                  {cel === "E11" && "Homologação dos arquivos de DVs"}
@@ -2204,14 +2173,14 @@ export default function App() {
                                                      {isRowDisabled || !isDifferent ? (
                                                        <span className="text-slate-400 mr-8">-</span>
                                                      ) : (
-                                                       <CampoData value={datasManuaisPrincipal[`${cel}_inicio`] || obterDatasManuaisGrafica()[`${cel}_inicio`] || ""} onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [`${cel}_inicio`]: val })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans" />
+                                                       <CampoData value={datasManuaisPrincipal[`${cel}_inicio`] || ""} onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [`${cel}_inicio`]: val })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans" />
                                                      )}
                                                    </td>
                                                    <td className="py-1 text-right font-sans">
                                                      {isRowDisabled ? (
                                                        <span className="text-slate-400 mr-8">-</span>
                                                      ) : (
-                                                       <CampoData value={datasManuaisPrincipal[cel] || obterDatasManuaisGrafica()[cel] || ""} onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [cel]: val })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans" />
+                                                       <CampoData value={datasManuaisPrincipal[cel] || ""} onChange={(val) => setDatasManuaisPrincipal({ ...datasManuaisPrincipal, [cel]: val })} className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto font-sans" />
                                                      )}
                                                    </td>
                                                  </>
@@ -2220,7 +2189,7 @@ export default function App() {
                                                  <td className="py-1.5 font-mono text-xs text-slate-400 text-right">
                                                    <div className="text-[10px] text-slate-300 font-sans">
                                                      Início: {
-                                                       cel === "E4" || cel === "E5" || cel === "E6" || cel === "E7" || cel === "E8" ? "=Fim" :
+                                                       cel === "E4" || cel === "E5" || cel === "E6" || cel === "E7" ? "=Fim" :
                                                        cel === "E9" ? "=E6+1" :
                                                        cel === "E10" ? "=E9+1" :
                                                        cel === "E11" ? "=E10+1" : ""
@@ -2234,9 +2203,8 @@ export default function App() {
                                                      }{
                                                        cel === "E6" && "DIATRABALHO(E9;-4;Feriados!$B:$B)"
                                                      }{
-                                                       cel === "E7" && "DIATRABALHO(E8;-2;Feriados!$B:$B)"
-                                                     }{
-                                                       cel === "E8" && "Cópia de E9"
+                                                       cel === "E7" && "DIATRABALHO(E9;-2;Feriados!$B:$B)"
+                                                     
                                                      }{
                                                        cel === "E9" && "DIATRABALHO(E10;-2;Feriados!$B:$B)"
                                                      }{
@@ -2307,7 +2275,7 @@ export default function App() {
                                                  <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
                                                    <CampoData 
                                                      disabled={isRowDisabled || isFieldDeactivated} 
-                                                     value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.inicio || obterDatasManuaisExtras()[row.celula]?.inicio || "")} 
+                                                     value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.inicio || "")} 
                                                      onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], inicio: val } })} 
                                                      className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
                                                    />
@@ -2319,7 +2287,7 @@ export default function App() {
                                                    {row.formula_fim !== "-" ? (
                                                      <CampoData 
                                                        disabled={isRowDisabled || isFieldDeactivated} 
-                                                       value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.fim || obterDatasManuaisExtras()[row.celula]?.fim || "")} 
+                                                       value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.fim || "")} 
                                                        onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } })} 
                                                        className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
                                                      />
@@ -2496,8 +2464,11 @@ export default function App() {
                                     <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
                                       <CampoData 
                                         disabled={isRowDisabled || isFieldDeactivated} 
-                                        value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.inicio || obterDatasManuaisExtras()[row.celula]?.inicio || "")} 
-                                        onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], inicio: val } })} 
+                                        value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (row.celula === "B26" ? (b26ManualInicio || datasManuaisExtras["B26"]?.inicio || "") : (datasManuaisExtras[row.celula]?.inicio || (row.celula === "B21" ? b21ManualInicio : "")))} 
+                                        onChange={(val) => {
+                                          setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], inicio: val } });
+                                          if (row.celula === "B21") setB21ManualInicio(val); if (row.celula === "B26") setB26ManualInicio(val);
+                                        }} 
                                         className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
                                       />
                                     </td>
@@ -2505,10 +2476,10 @@ export default function App() {
                                   
                                   {modoEdicaoExtras && (
                                     <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
-                                      {row.formula_fim !== "-" ? (
+                                      {(row.formula_fim !== "-" || row.celula === "B21") ? (
                                         <CampoData 
                                           disabled={isRowDisabled || isFieldDeactivated} 
-                                          value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.fim || obterDatasManuaisExtras()[row.celula]?.fim || "")} 
+                                          value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.fim || "")} 
                                           onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } })} 
                                           className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
                                         />
@@ -2542,7 +2513,7 @@ export default function App() {
               )}
 
               {/* Campo de Texto de Anotações com Barra de Edição (abaixo de todas as tabelas e acima dos botões de exportação) */}
-              <div className="space-y-2 pt-6 pb-2 border-t border-slate-200">
+              <div className={`space-y-2 pt-6 pb-2 border-t border-slate-200 transition-all duration-200 ${!(isSidebarEnabled && possuiParametrosPreenchidos()) ? 'opacity-35 pointer-events-none select-none' : ''}`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-sans flex items-center gap-2">
                     <span className="w-1.5 h-3.5 bg-[#3F48CC] rounded-full inline-block"></span>
@@ -2552,7 +2523,7 @@ export default function App() {
                 <RichTextEditor
                   value={observacoes}
                   onChange={(val) => setObservacoes(val)}
-                  disabled={!isSidebarEnabled}
+                  disabled={!(isSidebarEnabled && possuiParametrosPreenchidos())}
                 />
               </div>
 

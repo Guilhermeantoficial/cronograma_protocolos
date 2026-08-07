@@ -290,7 +290,7 @@ export function exportToXlsb({
       headerGrafica
     ];
 
-    const eCells = ["E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12"];
+    const eCells = ["E4", "E5", "E6", "E7", "E9", "E10", "E11", "E12"];
     const allGraficaItems = [
       ...eCells.map(cel => ({ isE: true as const, celula: cel, rowData: null as any })),
       ...datasExtras.map(row => ({ isE: false as const, celula: row.celula, rowData: row }))
@@ -313,7 +313,6 @@ export function exportToXlsb({
           cel === "E5" ? "Disponibilização dos itens de escrita antecipados" :
           cel === "E6" ? "Envio do arquivo de dados (.csv)" :
           cel === "E7" ? "Disponibilização dos cadernos de testes" :
-          cel === "E8" ? "Envio dos arquivos para impressão" :
           cel === "E9" ? "Envio dos arquivos de dados variáveis (DVs)" :
           cel === "E10" ? "Validação dos arquivos de DVs" :
           cel === "E11" ? "Homologação dos arquivos de DVs" :
