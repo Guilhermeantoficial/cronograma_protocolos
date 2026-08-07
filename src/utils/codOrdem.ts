@@ -11,7 +11,6 @@ export const COD_ORDEM_MAP: Record<string, string> = {
   E5: "106",
   E6: "114",
   E7: "107",
-  E8: "156",
   E9: "150",
   E10: "151",
   E11: "153",

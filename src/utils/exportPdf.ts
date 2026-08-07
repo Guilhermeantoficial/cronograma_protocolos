@@ -257,7 +257,7 @@ export function exportToPdf({
     const totalCols = 2 + (!ocultarCalculosPrincipal ? 2 : 0) + (modoEdicaoPrincipal ? 2 : 0);
     const rows: any[] = [];
 
-    const eCells = ["E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12"];
+    const eCells = ["E4", "E5", "E6", "E7", "E9", "E10", "E11", "E12"];
     const allGraficaItems = [
       ...eCells.map(cel => ({ isE: true as const, celula: cel, rowData: null as any })),
       ...datasExtras.map(row => ({ isE: false as const, celula: row.celula, rowData: row }))
@@ -280,7 +280,6 @@ export function exportToPdf({
           cel === "E5" ? "Disponibilização dos itens de escrita antecipados" :
           cel === "E6" ? "Envio do arquivo de dados (.csv)" :
           cel === "E7" ? "Disponibilização dos cadernos de testes" :
-          cel === "E8" ? "Envio dos arquivos para impressão" :
           cel === "E9" ? "Envio dos arquivos de dados variáveis (DVs)" :
           cel === "E10" ? "Validação dos arquivos de DVs" :
           cel === "E11" ? "Homologação dos arquivos de DVs" :
@@ -405,10 +404,10 @@ export function exportToPdf({
 
     const headerCaed = ["CÓD.", "ETAPA"];
     if (!ocultarCalculosPrincipal) {
-      headerCaed.push("DATA PROGRAMADA");
+      headerCaed.push("DATA INÍCIO", "DATA FIM");
     }
     if (modoEdicaoPrincipal) {
-      headerCaed.push("DATA PROGRAMADA (MANUAL)");
+      headerCaed.push("DATA INÍCIO (MANUAL)", "DATA FIM (MANUAL)");
     }
 
     const cCells = ["C4", "C5", "C6", "C7", "C8", "C10"];
@@ -430,37 +429,52 @@ export function exportToPdf({
           id === "C8" ? "Homologação dos arquivos de DVs" :
           id === "C10" ? "Entrega dos materiais nos polos até:" : "";
 
-        let calc = "-";
-        let manual = "-";
+        let displayInicio = "-";
+        let displayFim = "-";
+        let manualInicio = "-";
+        let manualFim = "-";
+
         if (!isRowDisabled) {
           if (id === "C4") {
-            calc = formatDate(calculosCaed.c4);
-            manual = formatDate(datasManuaisPrincipal["C4"] || calculosCaed.c4);
+            displayInicio = formatDate(calculosCaed.c4);
+            displayFim = formatDate(calculosCaed.c4);
+            manualInicio = formatDate(datasManuaisPrincipal["C4"] || calculosCaed.c4);
+            manualFim = formatDate(datasManuaisPrincipal["C4"] || calculosCaed.c4);
           } else if (id === "C5") {
-            calc = formatDate(calculosCaed.c5);
-            manual = formatDate(datasManuaisPrincipal["C5"] || calculosCaed.c5);
+            displayInicio = formatDate(calculosCaed.c5);
+            displayFim = formatDate(calculosCaed.c5);
+            manualInicio = formatDate(datasManuaisPrincipal["C5"] || calculosCaed.c5);
+            manualFim = formatDate(datasManuaisPrincipal["C5"] || calculosCaed.c5);
           } else if (id === "C6") {
-            calc = formatDate(calculosCaed.c6);
-            manual = formatDate(datasManuaisPrincipal["C6"] || calculosCaed.c6);
+            displayInicio = formatDate(calculosCaed.c6);
+            displayFim = formatDate(calculosCaed.c6);
+            manualInicio = formatDate(datasManuaisPrincipal["C6"] || calculosCaed.c6);
+            manualFim = formatDate(datasManuaisPrincipal["C6"] || calculosCaed.c6);
           } else if (id === "C7") {
-            calc = formatDate(calculosCaed.c7);
-            manual = formatDate(datasManuaisPrincipal["C7"] || calculosCaed.c7);
+            displayInicio = formatDate(calculosCaed.c7);
+            displayFim = formatDate(calculosCaed.c7);
+            manualInicio = formatDate(datasManuaisPrincipal["C7"] || calculosCaed.c7);
+            manualFim = formatDate(datasManuaisPrincipal["C7"] || calculosCaed.c7);
           } else if (id === "C8") {
-            calc = formatDate(calculosCaed.c8);
-            manual = formatDate(datasManuaisPrincipal["C8"] || calculosCaed.c8);
+            displayInicio = formatDate(calculosCaed.c8_inicio || calculosCaed.c8);
+            displayFim = formatDate(calculosCaed.c8);
+            manualInicio = formatDate(datasManuaisPrincipal["C8_inicio"] || calculosCaed.c8_inicio || calculosCaed.c8);
+            manualFim = formatDate(datasManuaisPrincipal["C8"] || calculosCaed.c8);
           } else if (id === "C10") {
-            calc = formatDate(calculosCaed.entregaPolos);
-            manual = formatDate(datasManuaisPrincipal["C10"] || calculosCaed.entregaPolos);
+            displayInicio = formatDate(calculosCaed.entregaPolos);
+            displayFim = formatDate(calculosCaed.entregaPolos);
+            manualInicio = formatDate(datasManuaisPrincipal["C10"] || calculosCaed.entregaPolos);
+            manualFim = formatDate(datasManuaisPrincipal["C10"] || calculosCaed.entregaPolos);
           }
         }
 
         const codOrdem = COD_ORDEM_MAP[id] || "-";
         const mapped = [codOrdem, name];
         if (!ocultarCalculosPrincipal) {
-          mapped.push(calc);
+          mapped.push(displayInicio, displayFim);
         }
         if (modoEdicaoPrincipal) {
-          mapped.push(manual);
+          mapped.push(manualInicio, manualFim);
         }
         caedBody.push(mapped);
       } else {
@@ -482,23 +496,35 @@ export function exportToPdf({
         const dependenteInativoB20 = row.celula === "B14" && (!possuiMaterialImpresso || desativadosOpcionais.B20);
         const isFieldDeactivated = (row.celula !== 'B21' && desativadosOpcionais[row.celula]) || dependenteInativoB26 || dependenteInativoB20;
 
-        let displayInicio = "-";
+        let displayInicio: any = "-";
+        let displayFim: any = "-";
+
         if (!isRowDisabled && !isFieldDeactivated) {
           displayInicio = formatDate(row.inicio);
+          displayFim = row.fim && row.fim !== "-" ? formatDate(row.fim) : "-";
+        } else {
+          displayInicio = { content: "-", styles: { textColor: [160, 174, 192] } };
+          displayFim = { content: "-", styles: { textColor: [160, 174, 192] } };
         }
 
-        let manualInicio = "-";
+        let manualInicio: any = "-";
+        let manualFim: any = "-";
+
         if (!isRowDisabled && !isFieldDeactivated) {
           manualInicio = (datasManuaisExtras[row.celula]?.inicio || row.inicio) ? formatDate(datasManuaisExtras[row.celula]?.inicio || row.inicio) : "-";
+          manualFim = (row.fim && row.fim !== "-") ? formatDate(datasManuaisExtras[row.celula]?.fim || row.fim) : "-";
+        } else {
+          manualInicio = { content: "-", styles: { textColor: [160, 174, 192] } };
+          manualFim = { content: "-", styles: { textColor: [160, 174, 192] } };
         }
 
         const codOrdem = COD_ORDEM_MAP[row.celula] || "-";
         const mapped = [codOrdem, row.nome];
         if (!ocultarCalculosPrincipal) {
-          mapped.push(displayInicio);
+          mapped.push(displayInicio, displayFim);
         }
         if (modoEdicaoPrincipal) {
-          mapped.push(manualInicio);
+          mapped.push(manualInicio, manualFim);
         }
         caedBody.push(mapped);
       }
@@ -509,16 +535,20 @@ export function exportToPdf({
     
     if (modoEdicaoPrincipal) {
       if (ocultarCalculosPrincipal) {
-        pColStyles[1] = { cellWidth: 137, halign: 'left' };
+        pColStyles[1] = { cellWidth: 107, halign: 'left' };
         pColStyles[2] = { cellWidth: 30, halign: 'center' };
+        pColStyles[3] = { cellWidth: 30, halign: 'center' };
       } else {
-        pColStyles[1] = { cellWidth: 117, halign: 'left' };
+        pColStyles[1] = { cellWidth: 67, halign: 'left' };
         pColStyles[2] = { cellWidth: 25, halign: 'center' };
         pColStyles[3] = { cellWidth: 25, halign: 'center' };
+        pColStyles[4] = { cellWidth: 25, halign: 'center' };
+        pColStyles[5] = { cellWidth: 25, halign: 'center' };
       }
     } else {
-      pColStyles[1] = { cellWidth: 140, halign: 'left' };
+      pColStyles[1] = { cellWidth: 113, halign: 'left' };
       pColStyles[2] = { cellWidth: 27, halign: 'center' };
+      pColStyles[3] = { cellWidth: 27, halign: 'center' };
     }
 
     autoTable(doc, {
@@ -552,7 +582,7 @@ export function exportToPdf({
   }
 
   // --- SECTION 3: DETALHAMENTO DE ETAPAS ---
-  if (activeScenario !== "grafica") {
+  if (activeScenario !== "grafica" && activeScenario !== "caed") {
     doc.addPage();
     currentY = 20;
 
@@ -868,7 +898,7 @@ export function exportToPdf({
   };
 
   // --- SECTION: ANOTAÇÕES COMPLEMENTARES (AO FINAL DEPOIS DAS TABELAS) ---
-  const sectionNum = activeScenario === "grafica" ? "3" : "4";
+  const sectionNum = "3";
   if (currentY > 230) {
     doc.addPage();
     currentY = 20;
