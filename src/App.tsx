@@ -53,6 +53,8 @@ const FERIADOS_PADRAO = [
   { date: "2027-01-01", label: "Confraternização Universal" }
 ];
 
+export const FeriadosContext = React.createContext<Array<{ date: string; label?: string; ativo?: boolean }>>([]);
+
 interface CampoDataProps {
   value: string;
   onChange: (value: string) => void;
@@ -60,10 +62,38 @@ interface CampoDataProps {
   required?: boolean;
   className?: string;
   placeholder?: string;
+  listaFeriados?: Array<{ date: string; label?: string; ativo?: boolean }>;
 }
 
-function CampoData({ value, onChange, disabled, required, className, placeholder = "dd/mm/yyyy" }: CampoDataProps) {
+function CampoData({ value, onChange, disabled, required, className, placeholder = "dd/mm/yyyy", listaFeriados }: CampoDataProps) {
   const [textValue, setTextValue] = useState('');
+  const contextFeriados = React.useContext(FeriadosContext);
+  const feriadosParaUsar = listaFeriados || contextFeriados;
+
+  let currDateStr = '';
+  if (value && value !== '1889-01-01' && value !== '1900-01-01') {
+    currDateStr = value;
+  } else if (textValue) {
+    const match = textValue.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (match) {
+      currDateStr = `${match[3]}-${match[2]}-${match[1]}`;
+    }
+  }
+
+  const feriadoEncontrado = feriadosParaUsar.find(f => f.date === currDateStr && f.ativo !== false);
+  const isFeriado = Boolean(currDateStr && feriadoEncontrado);
+
+  let isFimDeSemana = false;
+  if (currDateStr && /^\d{4}-\d{2}-\d{2}$/.test(currDateStr)) {
+    const [y, m, d] = currDateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    const dayOfWeek = dt.getDay(); // 0 = Domingo, 6 = Sábado
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      isFimDeSemana = true;
+    }
+  }
+
+  const isDataVermelha = isFeriado || isFimDeSemana;
 
   // Keep textValue in sync with value prop (YYYY-MM-DD)
   useEffect(() => {
@@ -161,10 +191,20 @@ function CampoData({ value, onChange, disabled, required, className, placeholder
   const inputClasses = classesList.filter(c => !c.startsWith('w-') && !c.startsWith('shrink-')).join(' ');
 
   const baseClass = className || "w-full border border-slate-200 rounded p-2 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:border-[#3F48CC] transition shadow-xs";
-  const combinedClass = className ? `${inputClasses} w-full pr-8` : `${baseClass} pr-8`;
+  let combinedClass = className ? `${inputClasses} w-full pr-8` : `${baseClass} pr-8`;
+  if (isDataVermelha) {
+    combinedClass += " !border-[#FF0000] !text-[#FF0000] focus:!border-[#FF0000] focus:!ring-1 focus:!ring-[#FF0000]";
+  }
+
+  const tooltipTitle = feriadoEncontrado 
+    ? `Feriado / Recesso: ${feriadoEncontrado.label}` 
+    : (isFimDeSemana ? "Final de semana (Sábado/Domingo)" : undefined);
 
   return (
-    <div className={`relative inline-flex items-center ${outerClasses} ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
+    <div 
+      className={`relative inline-flex items-center ${outerClasses} ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      title={tooltipTitle}
+    >
       <input
         type="text"
         placeholder={placeholder}
@@ -174,6 +214,7 @@ function CampoData({ value, onChange, disabled, required, className, placeholder
         disabled={disabled}
         required={required}
         className={combinedClass}
+        style={isDataVermelha ? { borderColor: '#FF0000', color: '#FF0000' } : undefined}
       />
       <div className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center ${disabled ? 'pointer-events-none' : 'cursor-pointer'}`}>
         <input
@@ -187,7 +228,10 @@ function CampoData({ value, onChange, disabled, required, className, placeholder
           tabIndex={-1}
           className="absolute inset-0 opacity-0 cursor-pointer w-5 h-5 z-10"
         />
-        <Calendar className="w-4 h-4 text-[#3F48CC] pointer-events-none" />
+        <Calendar 
+          className={`w-4 h-4 pointer-events-none ${isDataVermelha ? 'text-[#FF0000]' : 'text-[#3F48CC]'}`} 
+          style={isDataVermelha ? { color: '#FF0000' } : undefined} 
+        />
       </div>
     </div>
   );
@@ -258,6 +302,7 @@ export default function App() {
   const [b23ManualFim, setB23ManualFim] = useState('');
   const [b24ManualInicio, setB24ManualInicio] = useState('');
   const [b26ManualInicio, setB26ManualInicio] = useState('');
+  const [b26ManualFim, setB26ManualFim] = useState('');
   const [b28ManualInicio, setB28ManualInicio] = useState('');
   const [b29ManualInicio, setB29ManualInicio] = useState('');
 
@@ -283,6 +328,7 @@ export default function App() {
     setB23ManualInicio('');
     setB23ManualFim('');
     setB26ManualInicio('');
+    setB26ManualFim('');
     setB5ManualInicio('');
     setB5ManualFim('');
     setB9ManualInicio('');
@@ -330,6 +376,7 @@ export default function App() {
     setB23ManualFim('');
     setB24ManualInicio('');
     setB26ManualInicio('');
+    setB26ManualFim('');
     setB28ManualInicio('');
     setB29ManualInicio('');
     setH5ManualInicio('');
@@ -677,7 +724,7 @@ export default function App() {
       B23: { inicio: b23_m, fim: getM("B23", "fim", b23ManualFim || "") },
       B24: { inicio: getM("B24", "inicio", b24ManualInicio || ""), fim: "-" },
       B25: { inicio: b25_m, fim: b25_m },
-      B26: { inicio: b26_m, fim: "-" },
+      B26: { inicio: b26_m, fim: getM("B26", "fim", b26ManualFim || "") },
       B27: { inicio: b27_m, fim: b27_m },
       B28: { inicio: getM("B28", "inicio", b28ManualInicio || ""), fim: getM("B28", "fim", b28ManualInicio || "") },
       B29: { inicio: getM("B29", "inicio", b29ManualInicio || ""), fim: getM("B29", "fim", b29ManualInicio || "") },
@@ -751,7 +798,8 @@ export default function App() {
     const activeB18 = desativadosOpcionais.B18 ? "1889-01-01" : obterProximoDiaUtil(b18ManualInicio);
     const activeB20 = (!possuiMaterialImpresso || desativadosOpcionais.B20) ? "1889-01-01" : obterProximoDiaUtil(b20ManualInicio);
     const activeB24 = desativadosOpcionais.B24 ? "1889-01-01" : obterProximoDiaUtil(b24ManualInicio);
-    const activeB26 = desativadosOpcionais.B26 ? "1889-01-01" : obterProximoDiaUtil(b26ManualInicio); // B26 opcional ativo
+    const activeB26 = desativadosOpcionais.B26 ? "1889-01-01" : b26ManualInicio; // B26 opcional ativo
+    const activeB26Fim = desativadosOpcionais.B26 ? "1889-01-01" : b26ManualFim;
     const activeB28 = desativadosOpcionais.B28 ? "1889-01-01" : obterProximoDiaUtil(b28ManualInicio);
     const activeB29 = desativadosOpcionais.B29 ? "1889-01-01" : obterProximoDiaUtil(b29ManualInicio);
     const activeH8 = desativadosOpcionais.H8 ? "1889-01-01" : obterProximoDiaUtil(h8ManualInicio);
@@ -767,6 +815,7 @@ export default function App() {
       const b7_inicio = isBlank(b6_inicio) ? (isBlank(c6_or_e6) ? "1889-01-01" : adicionarDiasCalendario(c6_or_e6, 7)) : adicionarDiasCalendario(b6_inicio, 7);
       const b7_fim = b7_inicio;
       const b26_inicio_calc = activeB26; // Usar o valor ativo / inativo do controle opcional
+      const b26_fim_calc = activeB26Fim;
       const b8_inicio = isBlank(b26_inicio_calc) ? "1889-01-01" : calcularDiaTrabalho(b26_inicio_calc, -33);
       const b8_fim = b8_inicio;
 
@@ -867,7 +916,7 @@ export default function App() {
         { celula: "B23", nome: "Aplicação dos cadernos de testes impressos", formula_inicio: "Preenchimento no menu lateral", formula_fim: "Preenchimento no menu lateral", inicio: b23ManualInicio, fim: b23ManualFim, isFromGrafica: false, isSincronizadoTopo: true },
         { celula: "B24", nome: "Aplicação dos questionários digitais", formula_inicio: "Preenchimento Opcional", formula_fim: "-", inicio: activeB24, fim: "-", manualB24: true, isFromGrafica: false },
         { celula: "B25", nome: "Cadastramento das rotas", formula_inicio: "=DIATRABALHO(C26;-33;Feriados!$B$2:$B$103)", formula_fim: "=C25", inicio: b25_inicio, fim: b25_fim, isFromGrafica: false, dependenteB26: true },
-        { celula: "B26", nome: "Recolhimento dos materiais nos polos", formula_inicio: "Preenchimento Opcional", formula_fim: "-", inicio: b26_inicio_calc, fim: "-", isFromGrafica: false, manualB26: true, opcionalB26: true },
+        { celula: "B26", nome: "Recolhimento dos materiais nos polos", formula_inicio: "Preenchimento Opcional", formula_fim: "Preenchimento Opcional", inicio: b26_inicio_calc, fim: b26_fim_calc, isFromGrafica: false, manualB26: true, opcionalB26: true },
         { celula: "B27", nome: "Disponibilização da Ordem de Produção", formula_inicio: "=DIATRABALHO(C25;5;Feriados!$B$2:$B$103)", formula_fim: "=C27", inicio: b27_inicio, fim: b27_fim, isFromGrafica: false, dependenteB26: true },
         { celula: "B28", nome: "Envio de tutorial - Publicação dos resultados preliminares", formula_inicio: "Preenchimento Opcional", formula_fim: "-", inicio: activeB28, fim: activeB28, manualB28: true, isFromGrafica: false },
         { celula: "B29", nome: "Disponibilização do Relatório de Entrega - Publicação de Resultados Preliminares", formula_inicio: "Preenchimento Opcional", formula_fim: "-", inicio: activeB29, fim: activeB29, manualB29: true, isFromGrafica: false },
@@ -1010,10 +1059,6 @@ export default function App() {
           <div className="w-[110px] shrink-0 text-right">
             {isDeactivated ? (
                <span className="text-slate-400 font-medium select-none font-sans">-</span>
-            ) : row.opcionalB26 ? (
-              <span className="text-slate-800 font-normal font-sans">
-                {formatarDataBR(row.inicio)}
-              </span>
             ) : (
               <CampoData
                 disabled={isDeactivated}
@@ -1179,6 +1224,26 @@ export default function App() {
       );
     }
 
+    if (row.opcionalB26) {
+      return (
+        <div className="flex items-center justify-end gap-2.5">
+          <div className="w-[60px] shrink-0" />
+          <div className="w-[110px] shrink-0 text-right">
+            {isDeactivated ? (
+              <span className="text-slate-400 font-medium select-none font-sans">-</span>
+            ) : (
+              <CampoData
+                disabled={isDeactivated}
+                value={b26ManualFim || ""}
+                onChange={(newVal) => setB26ManualFim(newVal)}
+                className="border border-slate-200 rounded px-1.5 h-7 text-[11px] font-medium text-slate-600 bg-white focus:outline-none focus:border-[#3F48CC] w-[110px] hover:border-slate-300 transition-colors shadow-xs"
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
     if (row.manualH8) {
       return (
         <div className="flex items-center justify-end gap-2.5">
@@ -1221,7 +1286,8 @@ export default function App() {
   const isSidebarEnabled = codSubprograma.length === 4;
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans flex flex-col md:flex-row" lang="pt-BR">
+    <FeriadosContext.Provider value={feriados}>
+      <div className="min-h-screen bg-slate-100 text-slate-800 font-sans flex flex-col md:flex-row" lang="pt-BR">
       
       {/* SIDEBAR RECOLHÍVEL (PAINEL DE CONTROLE DOS PARÂMETROS) */}
       <aside 
@@ -1655,8 +1721,8 @@ export default function App() {
                 <div className="inline-flex items-center gap-2 border border-[#FFF200] px-2.5 py-0.5 text-[11px] font-black tracking-wider text-slate-950 rounded bg-[#FFF200] font-sans">
                   Fundação CAEd
                 </div>
-                <div className="inline-flex items-center gap-2 border border-[#FF3471] px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-white rounded bg-[#FF3471] font-sans">
-                  Última atualização: 07/08/2026
+                <div className="inline-flex items-center gap-2 border border-[#13612A] px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-white rounded bg-[#13612A] font-sans">
+                  Última atualização: 10/08/2026
                 </div>
               </div>
             </div>
@@ -2476,11 +2542,14 @@ export default function App() {
                                   
                                   {modoEdicaoExtras && (
                                     <td className="py-1 text-right font-sans w-36 min-w-[144px] max-w-[144px]">
-                                      {(row.formula_fim !== "-" || row.celula === "B21") ? (
+                                      {(row.formula_fim !== "-" || row.celula === "B21" || row.celula === "B26") ? (
                                         <CampoData 
                                           disabled={isRowDisabled || isFieldDeactivated} 
-                                          value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (datasManuaisExtras[row.celula]?.fim || "")} 
-                                          onChange={(val) => setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } })} 
+                                          value={(row.celula === "B14" && (row.excedeuE8 || obterDatasManuaisExtras().B14.excedeuE8)) ? "" : (row.celula === "B26" ? (b26ManualFim || datasManuaisExtras["B26"]?.fim || "") : (datasManuaisExtras[row.celula]?.fim || ""))} 
+                                          onChange={(val) => {
+                                            setDatasManuaisExtras({ ...datasManuaisExtras, [row.celula]: { ...datasManuaisExtras[row.celula], fim: val } });
+                                            if (row.celula === "B26") setB26ManualFim(val);
+                                          }} 
                                           className="border border-[#C9CACC] rounded px-1.5 py-0.5 text-xs w-[120px] h-7 text-slate-700 ml-auto disabled:opacity-50 font-sans" 
                                         />
                                       ) : (
@@ -2549,6 +2618,7 @@ export default function App() {
                       b23ManualInicio,
                       b23ManualFim,
                       b26ManualInicio,
+                      b26ManualFim,
                       b5ManualInicio,
                       desativadosOpcionais,
                       calculosGrafica,
@@ -2595,6 +2665,7 @@ export default function App() {
                       b23ManualInicio,
                       b23ManualFim,
                       b26ManualInicio,
+                      b26ManualFim,
                       b5ManualInicio,
                       desativadosOpcionais,
                       calculosGrafica,
@@ -2756,5 +2827,6 @@ export default function App() {
       </main>
       </div>
     </div>
+    </FeriadosContext.Provider>
   );
 }

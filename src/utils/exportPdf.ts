@@ -20,6 +20,7 @@ interface ExportParams {
   b23ManualInicio: string;
   b23ManualFim: string;
   b26ManualInicio: string;
+  b26ManualFim?: string;
   b5ManualInicio: string;
   desativadosOpcionais: Record<string, boolean>;
   calculosGrafica: any;
@@ -52,6 +53,7 @@ export function exportToPdf({
   b23ManualInicio,
   b23ManualFim,
   b26ManualInicio,
+  b26ManualFim = '',
   b5ManualInicio,
   desativadosOpcionais,
   calculosGrafica,
