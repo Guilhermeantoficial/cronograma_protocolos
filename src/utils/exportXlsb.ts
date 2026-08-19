@@ -16,6 +16,10 @@ interface ExportParams {
   constaCaedAplicacao: boolean;
   possuiEscrita: boolean;
   possuiMaterialImpresso?: boolean;
+  possuiConsorcio?: boolean;
+  possuiBraile?: boolean;
+  possuiAdLibras?: boolean;
+  b21ManualInicio?: string;
   b23ManualInicio: string;
   b23ManualFim: string;
   b26ManualInicio: string;
@@ -68,6 +72,10 @@ export function exportToXlsb({
   constaCaedAplicacao,
   possuiEscrita,
   possuiMaterialImpresso = true,
+  possuiConsorcio = false,
+  possuiBraile = false,
+  possuiAdLibras = false,
+  b21ManualInicio = '',
   b23ManualInicio,
   b23ManualFim,
   b26ManualInicio,
@@ -251,8 +259,11 @@ export function exportToXlsb({
     ["", ""],
     ["3. CRITÉRIOS DE HABILITAÇÃO", ""],
     ["CAEd Aplicação (EP05) (Ativa B5 e B9)", constaCaedAplicacao ? "Habilitado" : "Desabilitado"],
-    ["Escrita (Ativa B8)", possuiEscrita ? "Habilitado" : "Desabilitado"],
+    ["Escrita IRC (Ativa B8)", possuiEscrita ? "Habilitado" : "Desabilitado"],
     ["Manuais impressos (Ativa B14 e B20)", possuiMaterialImpresso ? "Habilitado" : "Desabilitado"],
+    ["Braile (Ativa B17 e B19)", possuiBraile ? "Habilitado" : "Desabilitado"],
+    ["AD e/ou Libras (Ativa B19 e B18 c/ Consórcio)", possuiAdLibras ? "Habilitado" : "Desabilitado"],
+    ["Consórcio (Ativa B18 c/ AD/Libras)", possuiConsorcio ? "Habilitado" : "Desabilitado"],
     ["", ""],
     ["4. CAMPOS DE PREENCHIMENTO DO SIDEBAR", ""],
     ["Aplicação dos Cadernos (Início)", formatDate(b23ManualInicio)],
@@ -292,7 +303,7 @@ export function exportToXlsb({
       headerGrafica
     ];
 
-    const eCells = ["E4", "E5", "E6", "E7", "E9", "E10", "E11", "E12"];
+    const eCells = ["E4", "E5", "E6", "E7", "E9", "E10", "E11"];
     const allGraficaItems = [
       ...eCells.map(cel => ({ isE: true as const, celula: cel, rowData: null as any })),
       ...datasExtras.map(row => ({ isE: false as const, celula: row.celula, rowData: row }))
@@ -339,6 +350,18 @@ export function exportToXlsb({
           if (row.isMaterialImpresso && !possuiMaterialImpresso) {
             isRowDisabled = true;
           }
+          if ((row.celula === "B6" || row.celula === "B7" || row.celula === "B22") && (!b5ManualInicio || b5ManualInicio === "1889-01-01")) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B17" && !possuiBraile) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B18" && !(possuiConsorcio && possuiAdLibras)) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B19" && !(possuiBraile || possuiAdLibras)) {
+            isRowDisabled = true;
+          }
         }
 
         const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
@@ -349,8 +372,8 @@ export function exportToXlsb({
         let displayFim = "-";
 
         if (!isRowDisabled && !isFieldDeactivated) {
-          displayInicio = formatDate(row.inicio);
-          displayFim = row.fim && row.fim !== "-" ? formatDate(row.fim) : "-";
+          displayInicio = (row.inicio && row.inicio !== "1889-01-01") ? formatDate(row.inicio) : "-";
+          displayFim = row.fim && row.fim !== "-" && row.fim !== "1889-01-01" ? formatDate(row.fim) : "-";
         } else {
           displayInicio = "Inativo / Desabilitado";
           displayFim = "Inativo / Desabilitado";
@@ -359,8 +382,17 @@ export function exportToXlsb({
         let manualInicio = "-";
         let manualFim = "-";
         if (!isRowDisabled && !isFieldDeactivated) {
-          manualInicio = (datasManuaisExtras[row.celula]?.inicio || row.inicio) ? formatDate(datasManuaisExtras[row.celula]?.inicio || row.inicio) : "-";
-          manualFim = (row.fim && row.fim !== "-") ? formatDate(datasManuaisExtras[row.celula]?.fim || row.fim) : "-";
+          const mInicioVal = (datasManuaisExtras && datasManuaisExtras[row.celula]?.inicio) || (row.celula === "B21" ? b21ManualInicio : "");
+          manualInicio = (mInicioVal && mInicioVal !== "1889-01-01") ? formatDate(mInicioVal) : "-";
+
+          let mFimVal = (datasManuaisExtras && datasManuaisExtras[row.celula]?.fim) || row.fim;
+          if (row.celula === "B21") {
+            const sidebarManual = (datasManuaisPrincipal && (datasManuaisPrincipal["C10"] || datasManuaisPrincipal["E12"]));
+            if (sidebarManual && sidebarManual !== "1889-01-01") {
+              mFimVal = sidebarManual;
+            }
+          }
+          manualFim = (mFimVal && mFimVal !== "-" && mFimVal !== "1889-01-01") ? formatDate(mFimVal) : "-";
         } else {
           manualInicio = "Inativo / Desabilitado";
           manualFim = "Inativo / Desabilitado";
@@ -434,7 +466,7 @@ export function exportToXlsb({
       headerCaed
     ];
 
-    const cCells = ["C4", "C5", "C6", "C7", "C8", "C10"];
+    const cCells = ["C4", "C5", "C6", "C7", "C8"];
     const allCaedItems = [
       ...cCells.map(cel => ({ isC: true as const, celula: cel, rowData: null as any })),
       ...datasExtras.map(row => ({ isC: false as const, celula: row.celula, rowData: row }))
@@ -511,6 +543,18 @@ export function exportToXlsb({
           if (row.isMaterialImpresso && !possuiMaterialImpresso) {
             isRowDisabled = true;
           }
+          if ((row.celula === "B6" || row.celula === "B7" || row.celula === "B22") && (!b5ManualInicio || b5ManualInicio === "1889-01-01")) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B17" && !possuiBraile) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B18" && !(possuiConsorcio && possuiAdLibras)) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B19" && !(possuiBraile || possuiAdLibras)) {
+            isRowDisabled = true;
+          }
         }
 
         const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
@@ -521,8 +565,8 @@ export function exportToXlsb({
         let displayFim = "-";
 
         if (!isRowDisabled && !isFieldDeactivated) {
-          displayInicio = formatDate(row.inicio);
-          displayFim = row.fim && row.fim !== "-" ? formatDate(row.fim) : "-";
+          displayInicio = (row.inicio && row.inicio !== "1889-01-01") ? formatDate(row.inicio) : "-";
+          displayFim = row.fim && row.fim !== "-" && row.fim !== "1889-01-01" ? formatDate(row.fim) : "-";
         } else {
           displayInicio = "Inativo / Desabilitado";
           displayFim = "Inativo / Desabilitado";
@@ -531,8 +575,17 @@ export function exportToXlsb({
         let manualInicio = "-";
         let manualFim = "-";
         if (!isRowDisabled && !isFieldDeactivated) {
-          manualInicio = (datasManuaisExtras[row.celula]?.inicio || row.inicio) ? formatDate(datasManuaisExtras[row.celula]?.inicio || row.inicio) : "-";
-          manualFim = (row.fim && row.fim !== "-") ? formatDate(datasManuaisExtras[row.celula]?.fim || row.fim) : "-";
+          const mInicioVal = (datasManuaisExtras && datasManuaisExtras[row.celula]?.inicio) || (row.celula === "B21" ? b21ManualInicio : "");
+          manualInicio = (mInicioVal && mInicioVal !== "1889-01-01") ? formatDate(mInicioVal) : "-";
+
+          let mFimVal = (datasManuaisExtras && datasManuaisExtras[row.celula]?.fim) || row.fim;
+          if (row.celula === "B21") {
+            const sidebarManual = (datasManuaisPrincipal && (datasManuaisPrincipal["C10"] || datasManuaisPrincipal["E12"]));
+            if (sidebarManual && sidebarManual !== "1889-01-01") {
+              mFimVal = sidebarManual;
+            }
+          }
+          manualFim = (mFimVal && mFimVal !== "-" && mFimVal !== "1889-01-01") ? formatDate(mFimVal) : "-";
         } else {
           manualInicio = "Inativo / Desabilitado";
           manualFim = "Inativo / Desabilitado";
