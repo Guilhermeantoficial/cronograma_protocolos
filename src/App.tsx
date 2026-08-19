@@ -271,6 +271,37 @@ export default function App() {
   const [constaCaedAplicacao, setConstaCaedAplicacao] = useState(false);
   const [possuiEscrita, setPossuiEscrita] = useState(false);
   const [possuiMaterialImpresso, setPossuiMaterialImpresso] = useState(false);
+  const [possuiConsorcio, setPossuiConsorcio] = useState(false);
+  const [possuiBraile, setPossuiBraile] = useState(false);
+  const [possuiAdLibras, setPossuiAdLibras] = useState(false);
+
+  const checkIsRowDisabled = (row: any) => {
+    let isRowDisabled = false;
+    if (evaluationType === 'somativa' || evaluationType === 'formativa') {
+      if (row.isB5B9 && !constaCaedAplicacao) {
+        isRowDisabled = true;
+      }
+      if (row.isB8 && !possuiEscrita) {
+        isRowDisabled = true;
+      }
+      if (row.isMaterialImpresso && !possuiMaterialImpresso) {
+        isRowDisabled = true;
+      }
+      if ((row.celula === "B6" || row.celula === "B7" || row.celula === "B22") && (!b5ManualInicio || b5ManualInicio === "1889-01-01")) {
+        isRowDisabled = true;
+      }
+      if (row.celula === "B17" && !possuiBraile) {
+        isRowDisabled = true;
+      }
+      if (row.celula === "B18" && !(possuiConsorcio && possuiAdLibras)) {
+        isRowDisabled = true;
+      }
+      if (row.celula === "B19" && !(possuiBraile || possuiAdLibras)) {
+        isRowDisabled = true;
+      }
+    }
+    return isRowDisabled;
+  };
 
   // Controle de ativação/inativação de campos manuais opcionais
   const [desativadosOpcionais, setDesativadosOpcionais] = useState({
@@ -363,6 +394,9 @@ export default function App() {
     setConstaCaedAplicacao(false);
     setPossuiEscrita(false);
     setPossuiMaterialImpresso(false);
+    setPossuiConsorcio(false);
+    setPossuiBraile(false);
+    setPossuiAdLibras(false);
     setB5ManualInicio('');
     setB5ManualFim('');
     setB9ManualInicio('');
@@ -693,7 +727,7 @@ export default function App() {
       b14_m = "";
       b14_excedeuE8_m = true;
     }
-    const b13_m = getM("B13", "inicio", b20_m ? (b14_m ? calcularDiaTrabalho(b14_m, -1) : "") : (b15_m ? calcularDiaTrabalho(b15_m, -1) : ""));
+    const b13_m = getM("B13", "inicio", (b20_m && b14_m) ? calcularDiaTrabalho(b14_m, -1) : (b15_m ? calcularDiaTrabalho(b15_m, -1) : ""));
     const b21_m = getM("B21", "inicio", b21ManualInicio || t_entrega || "");
     const b9_m = getM("B9", "inicio", b5_m ? calcularDiaTrabalho(b5_m, 11) : "");
     const b9_plus_m = getM("B9+", "fim", b9_m ? calcularDiaTrabalho(b9_m, 4) : "");
@@ -805,7 +839,10 @@ export default function App() {
     const activeH8 = desativadosOpcionais.H8 ? "1889-01-01" : obterProximoDiaUtil(h8ManualInicio);
 
     if (evaluationType === 'somativa' || evaluationType === 'formativa') {
-      const b15_base_calc = b15ManualInicio ? obterProximoDiaUtil(b15ManualInicio) : (e8_or_c8 || "1889-01-01");
+      const b15_caed_calc = t_entrega !== "1889-01-01" ? calcularDiaTrabalho(t_entrega, -calculosCaed.prazoAjustado) : "1889-01-01";
+      const b15_base_calc = b15ManualInicio 
+        ? obterProximoDiaUtil(b15ManualInicio) 
+        : (datasManuaisExtras["B15"]?.inicio || (isCaed ? b15_caed_calc : (e8_or_c8 || "1889-01-01")));
       const b15_inicio_calc = b15_base_calc;
 
       const finalB5Inicio = isBlank(b15_inicio_calc) ? "1889-01-01" : calcularDiaTrabalho(b15_inicio_calc, -4);
@@ -852,8 +889,8 @@ export default function App() {
       const b14_fim = b14_inicio;
 
       let b13_inicio = "1889-01-01";
-      if (!isBlank(activeB20)) {
-        b13_inicio = isBlank(b14_inicio_raw) ? "1889-01-01" : calcularDiaTrabalho(b14_inicio_raw, -1);
+      if (!isBlank(activeB20) && !isBlank(b14_inicio)) {
+        b13_inicio = calcularDiaTrabalho(b14_inicio, -1);
       } else {
         b13_inicio = isBlank(b15_inicio_calc) ? "1889-01-01" : calcularDiaTrabalho(b15_inicio_calc, -1);
       }
@@ -902,7 +939,7 @@ export default function App() {
         { celula: "B10", nome: "Análise das inconsistências da base institutional", formula_inicio: "Preenchimento Opcional", formula_fim: "=B21", inicio: b10_inicio, fim: b10_fim, manualB10: true, isFromGrafica: false },
         { celula: "B13", nome: "Disponibilização dos materiais de capacitação", formula_inicio: "=SE(C20=\"\";DIATRABALHO(C15;-1;Feriados!$B$2:$B$103);DIATRABALHO(C14;-1;Feriados!$B$2:$B$103))", formula_fim: "=C13", inicio: b13_inicio, fim: b13_fim, isFromGrafica: true },
         { celula: "B14", nome: "Envio dos materiais de capacitação antecipados para impressão", formula_inicio: "=DIATRABALHO(C20;-12;Feriados!$B2:$B103)", formula_fim: "=C14", inicio: b14_inicio, fim: b14_fim, isMaterialImpresso: true, isFromGrafica: false, excedeuE8: b14_excedeuE8 },
-        { celula: "B15", nome: "Envio dos arquivos para impressão", formula_inicio: "Cópia de E9", formula_fim: "-", inicio: b15_inicio_calc, fim: b15_inicio_calc, isFromGrafica: true },
+        { celula: "B15", nome: "Envio dos arquivos para impressão", formula_inicio: isCaed ? "=DIATRABALHO(B21;-prazoAjustado;Feriados!$B:$B)" : "Cópia de E9", formula_fim: "-", inicio: b15_inicio_calc, fim: b15_inicio_calc, isFromGrafica: true },
         { celula: "B16", nome: "Envio dos arquivos para impressão (contratual)", formula_inicio: "=B15 (sem margem)", formula_fim: "=C16", inicio: b16_sem_margem, fim: b16_sem_margem, isFromGrafica: true },
         { celula: "B5", nome: "Solicitação de leiaute de base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(B15;-4;Feriados!$B:$B)", formula_fim: "=C5", inicio: finalB5Inicio, fim: finalB5Fim, isB5B9: true, isFromGrafica: true },
         { celula: "B9", nome: "Envio da base de agentes de Campo (CAEd Aplicação)", formula_inicio: "=DIATRABALHO(B5;11;Feriados!$B:$B)", formula_fim: "=C9", inicio: finalB9Inicio, fim: finalB9Fim, isB5B9: true, isFromGrafica: true },
@@ -1532,6 +1569,7 @@ export default function App() {
                 </span>
                 
                 <div className="grid grid-cols-2 gap-1">
+                  {/* Linha 1 */}
                   <label className="flex items-center gap-1.5 p-1 bg-slate-50 border border-[#C9CACC] rounded-md cursor-pointer hover:bg-slate-100 transition min-h-[36px]">
                     <input
                       type="checkbox"
@@ -1569,7 +1607,8 @@ export default function App() {
                     </div>
                   </label>
 
-                  <label className="flex items-center gap-1.5 p-1 bg-slate-50 border border-[#C9CACC] rounded-md cursor-pointer hover:bg-slate-100 transition min-h-[36px] col-span-2">
+                  {/* Linha 2 */}
+                  <label className="flex items-center gap-1.5 p-1 bg-slate-50 border border-[#C9CACC] rounded-md cursor-pointer hover:bg-slate-100 transition min-h-[36px]">
                     <input
                       type="checkbox"
                       checked={possuiMaterialImpresso}
@@ -1580,6 +1619,52 @@ export default function App() {
                       <span className="block text-[10px] font-bold text-slate-800 leading-tight">MANUAIS IMPRESSOS</span>
                       <span className="block text-[8px] text-slate-500 mt-0.5 leading-none">
                         Ativa B14 e B20
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 p-1 bg-slate-50 border border-[#C9CACC] rounded-md cursor-pointer hover:bg-slate-100 transition min-h-[36px]">
+                    <input
+                      type="checkbox"
+                      checked={possuiBraile}
+                      onChange={(e) => setPossuiBraile(e.target.checked)}
+                      className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3.5 w-3.5 cursor-pointer shrink-0"
+                    />
+                    <div className="min-w-0 flex flex-col justify-center">
+                      <span className="block text-[10px] font-bold text-slate-800 leading-tight">BRAILE</span>
+                      <span className="block text-[8px] text-slate-500 mt-0.5 leading-none">
+                        Ativa B17 e B19
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Linha 3 */}
+                  <label className="flex items-center gap-1.5 p-1 bg-slate-50 border border-[#C9CACC] rounded-md cursor-pointer hover:bg-slate-100 transition min-h-[36px]">
+                    <input
+                      type="checkbox"
+                      checked={possuiAdLibras}
+                      onChange={(e) => setPossuiAdLibras(e.target.checked)}
+                      className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3.5 w-3.5 cursor-pointer shrink-0"
+                    />
+                    <div className="min-w-0 flex flex-col justify-center">
+                      <span className="block text-[10px] font-bold text-slate-800 leading-tight">AD E/OU LIBRAS</span>
+                      <span className="block text-[8px] text-slate-500 mt-0.5 leading-none">
+                        Ativa B19 e B18 (c/ Consórcio)
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 p-1 bg-slate-50 border border-[#C9CACC] rounded-md cursor-pointer hover:bg-slate-100 transition min-h-[36px]">
+                    <input
+                      type="checkbox"
+                      checked={possuiConsorcio}
+                      onChange={(e) => setPossuiConsorcio(e.target.checked)}
+                      className="rounded text-[#3F48CC] focus:ring-[#3F48CC] h-3.5 w-3.5 cursor-pointer shrink-0"
+                    />
+                    <div className="min-w-0 flex flex-col justify-center">
+                      <span className="block text-[10px] font-bold text-slate-800 leading-tight">CONSÓRCIO</span>
+                      <span className="block text-[8px] text-slate-500 mt-0.5 leading-none">
+                        Ativa B18 (c/ AD/Libras)
                       </span>
                     </div>
                   </label>
@@ -1721,8 +1806,8 @@ export default function App() {
                 <div className="inline-flex items-center gap-2 border border-[#FFF200] px-2.5 py-0.5 text-[11px] font-black tracking-wider text-slate-950 rounded bg-[#FFF200] font-sans">
                   Fundação CAEd
                 </div>
-                <div className="inline-flex items-center gap-2 border border-[#13612A] px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-white rounded bg-[#13612A] font-sans">
-                  Última atualização: 10/08/2026
+                <div className="inline-flex items-center gap-2 border border-[#e5b4ff] px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-slate-950 rounded bg-[#e5b4ff] font-sans">
+                  Última atualização: 19/08/2026
                 </div>
               </div>
             </div>
@@ -1978,18 +2063,7 @@ export default function App() {
                                            );
                                          } else {
                                            const row: any = item.extraRow;
-                                           let isRowDisabled = false;
-                                           if (evaluationType === 'somativa' || evaluationType === 'formativa') {
-                                               if (row.isB5B9 && !constaCaedAplicacao) {
-                                                 isRowDisabled = true;
-                                               }
-                                               if (row.isB8 && !possuiEscrita) {
-                                                 isRowDisabled = true;
-                                               }
-                                               if (row.isMaterialImpresso && !possuiMaterialImpresso) {
-                                                 isRowDisabled = true;
-                                               }
-                                           }
+                                           let isRowDisabled = checkIsRowDisabled(row);
 
                                            const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
                                            const dependenteInativoB20 = row.celula === "B14" && (!possuiMaterialImpresso || desativadosOpcionais.B20);
@@ -2285,18 +2359,7 @@ export default function App() {
                                            );
                                          } else {
                                            const row: any = item.extraRow;
-                                           let isRowDisabled = false;
-                                           if (evaluationType === 'somativa' || evaluationType === 'formativa') {
-                                               if (row.isB5B9 && !constaCaedAplicacao) {
-                                                 isRowDisabled = true;
-                                               }
-                                               if (row.isB8 && !possuiEscrita) {
-                                                 isRowDisabled = true;
-                                               }
-                                               if (row.isMaterialImpresso && !possuiMaterialImpresso) {
-                                                 isRowDisabled = true;
-                                               }
-                                           }
+                                           let isRowDisabled = checkIsRowDisabled(row);
 
                                            const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
                                            const dependenteInativoB20 = row.celula === "B14" && (!possuiMaterialImpresso || desativadosOpcionais.B20);
@@ -2476,18 +2539,7 @@ export default function App() {
                           </thead>
                           <tbody className="divide-y divide-[#C9CACC] text-slate-600 font-medium">
                             {[...obterDatasExtrasCalculadas()].sort((a, b) => getCodOrdemNumeric(a.celula) - getCodOrdemNumeric(b.celula)).map((row: any) => {
-                              let isRowDisabled = false;
-                              if (evaluationType === 'somativa' || evaluationType === 'formativa') {
-                                  if (row.isB5B9 && !constaCaedAplicacao) {
-                                    isRowDisabled = true;
-                                  }
-                                  if (row.isB8 && !possuiEscrita) {
-                                    isRowDisabled = true;
-                                  }
-                                  if (row.isMaterialImpresso && !possuiMaterialImpresso) {
-                                    isRowDisabled = true;
-                                  }
-                              }
+                              let isRowDisabled = checkIsRowDisabled(row);
 
                               // Propagação lógica: se o B26 estiver inativado na tabela, inativa b25, b27 e b8 automaticamente. E se B20 estiver inativado na tabela, inativa B14 automaticamente.
                               const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
@@ -2615,6 +2667,10 @@ export default function App() {
                       constaCaedAplicacao,
                       possuiEscrita,
                       possuiMaterialImpresso,
+                      possuiConsorcio,
+                      possuiBraile,
+                      possuiAdLibras,
+                      b21ManualInicio,
                       b23ManualInicio,
                       b23ManualFim,
                       b26ManualInicio,
@@ -2662,6 +2718,10 @@ export default function App() {
                       constaCaedAplicacao,
                       possuiEscrita,
                       possuiMaterialImpresso,
+                      possuiConsorcio,
+                      possuiBraile,
+                      possuiAdLibras,
+                      b21ManualInicio,
                       b23ManualInicio,
                       b23ManualFim,
                       b26ManualInicio,

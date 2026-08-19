@@ -17,6 +17,10 @@ interface ExportParams {
   constaCaedAplicacao: boolean;
   possuiEscrita: boolean;
   possuiMaterialImpresso?: boolean;
+  possuiConsorcio?: boolean;
+  possuiBraile?: boolean;
+  possuiAdLibras?: boolean;
+  b21ManualInicio?: string;
   b23ManualInicio: string;
   b23ManualFim: string;
   b26ManualInicio: string;
@@ -50,6 +54,10 @@ export function exportToPdf({
   constaCaedAplicacao,
   possuiEscrita,
   possuiMaterialImpresso = true,
+  possuiConsorcio = false,
+  possuiBraile = false,
+  possuiAdLibras = false,
+  b21ManualInicio = '',
   b23ManualInicio,
   b23ManualFim,
   b26ManualInicio,
@@ -196,9 +204,60 @@ export function exportToPdf({
 
   sidebarRows.push(
     [{ content: "3. CRITÉRIOS DE HABILITAÇÃO", colSpan: 2, styles: { fillColor: [242, 242, 242], fontStyle: 'bold' } }],
-    ["CAEd Aplicação (EP05) (Ativa B5 e B9)", constaCaedAplicacao ? "Habilitado" : "Desabilitado"],
-    ["Escrita (Ativa B8)", possuiEscrita ? "Habilitado" : "Desabilitado"],
-    ["Manuais impressos (Ativa B14 e B20)", possuiMaterialImpresso ? "Habilitado" : "Desabilitado"],
+    [
+      {
+        content: `CAEd APLICAÇÃO (EP05): ${constaCaedAplicacao ? 'Habilitado' : 'Desabilitado'}`,
+        isCustomHabilitacao: true,
+        title: "CAEd APLICAÇÃO (EP05)",
+        status: constaCaedAplicacao ? "Habilitado" : "Desabilitado",
+        subtitle: "Ativa B5 e B9",
+        styles: { minCellHeight: 7.2 }
+      },
+      {
+        content: `ESCRITA IRC: ${possuiEscrita ? 'Habilitado' : 'Desabilitado'}`,
+        isCustomHabilitacao: true,
+        title: "ESCRITA IRC",
+        status: possuiEscrita ? "Habilitado" : "Desabilitado",
+        subtitle: "Ativa B8",
+        styles: { minCellHeight: 7.2 }
+      }
+    ],
+    [
+      {
+        content: `MANUAIS IMPRESSOS: ${possuiMaterialImpresso ? 'Habilitado' : 'Desabilitado'}`,
+        isCustomHabilitacao: true,
+        title: "MANUAIS IMPRESSOS",
+        status: possuiMaterialImpresso ? "Habilitado" : "Desabilitado",
+        subtitle: "Ativa B14 e B20",
+        styles: { minCellHeight: 7.2 }
+      },
+      {
+        content: `BRAILE: ${possuiBraile ? 'Habilitado' : 'Desabilitado'}`,
+        isCustomHabilitacao: true,
+        title: "BRAILE",
+        status: possuiBraile ? "Habilitado" : "Desabilitado",
+        subtitle: "Ativa B17 e B19",
+        styles: { minCellHeight: 7.2 }
+      }
+    ],
+    [
+      {
+        content: `AD E/OU LIBRAS: ${possuiAdLibras ? 'Habilitado' : 'Desabilitado'}`,
+        isCustomHabilitacao: true,
+        title: "AD E/OU LIBRAS",
+        status: possuiAdLibras ? "Habilitado" : "Desabilitado",
+        subtitle: "Ativa B19 e B18 (c/ Consórcio)",
+        styles: { minCellHeight: 7.2 }
+      },
+      {
+        content: `CONSÓRCIO: ${possuiConsorcio ? 'Habilitado' : 'Desabilitado'}`,
+        isCustomHabilitacao: true,
+        title: "CONSÓRCIO",
+        status: possuiConsorcio ? "Habilitado" : "Desabilitado",
+        subtitle: "Ativa B18 (c/ AD/Libras)",
+        styles: { minCellHeight: 7.2 }
+      }
+    ],
     
     [{ content: "4. CAMPOS DE PREENCHIMENTO DO SIDEBAR", colSpan: 2, styles: { fillColor: [242, 242, 242], fontStyle: 'bold' } }],
     ["Aplicação dos Cadernos (Início)", formatDate(b23ManualInicio)],
@@ -228,6 +287,41 @@ export function exportToPdf({
     },
     margin: { left: 14, right: 14 },
     didParseCell: didParseCellHelper,
+    willDrawCell: (data) => {
+      if (data.cell.raw && (data.cell.raw as any).isCustomHabilitacao) {
+        data.cell.text = []; // Limpa o texto padrão para desenharmos customizado
+      }
+    },
+    didDrawCell: (data) => {
+      if (data.cell.raw && (data.cell.raw as any).isCustomHabilitacao) {
+        const cell = data.cell;
+        const doc = data.doc;
+        const raw = cell.raw as any;
+        
+        const x = cell.x + 2; 
+        let y = cell.y + 2.8; 
+        
+        // 1. Nome do botão em negrito
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(8.0);
+        doc.setTextColor(30, 41, 59); 
+        doc.text(raw.title + ": ", x, y);
+        
+        const titleWidth = doc.getTextWidth(raw.title + ": ");
+        
+        // 2. Status Habilitado ou Desabilitado em negrito
+        doc.setTextColor(30, 41, 59); 
+        doc.text(raw.status, x + titleWidth, y);
+        
+        // 3. Explicação em letra menor abaixo
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139); 
+        
+        y += 2.5; 
+        doc.text(raw.subtitle, x, y);
+      }
+    },
     didDrawPage: (data) => {
       currentY = data.cursor ? data.cursor.y : currentY;
     }
@@ -259,7 +353,7 @@ export function exportToPdf({
     const totalCols = 2 + (!ocultarCalculosPrincipal ? 2 : 0) + (modoEdicaoPrincipal ? 2 : 0);
     const rows: any[] = [];
 
-    const eCells = ["E4", "E5", "E6", "E7", "E9", "E10", "E11", "E12"];
+    const eCells = ["E4", "E5", "E6", "E7", "E9", "E10", "E11"];
     const allGraficaItems = [
       ...eCells.map(cel => ({ isE: true as const, celula: cel, rowData: null as any })),
       ...datasExtras.map(row => ({ isE: false as const, celula: row.celula, rowData: row }))
@@ -284,8 +378,7 @@ export function exportToPdf({
           cel === "E7" ? "Disponibilização dos cadernos de testes" :
           cel === "E9" ? "Envio dos arquivos de dados variáveis (DVs)" :
           cel === "E10" ? "Validação dos arquivos de DVs" :
-          cel === "E11" ? "Homologação dos arquivos de DVs" :
-          cel === "E12" ? "Entrega dos materiais nos polos" : "";
+          cel === "E11" ? "Homologação dos arquivos de DVs" : "";
 
         const codOrdem = COD_ORDEM_MAP[cel] || "-";
         const rowData = [codOrdem, rowName];
@@ -309,6 +402,18 @@ export function exportToPdf({
           if (row.isMaterialImpresso && !possuiMaterialImpresso) {
             isRowDisabled = true;
           }
+          if ((row.celula === "B6" || row.celula === "B7" || row.celula === "B22") && (!b5ManualInicio || b5ManualInicio === "1889-01-01")) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B17" && !possuiBraile) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B18" && !(possuiConsorcio && possuiAdLibras)) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B19" && !(possuiBraile || possuiAdLibras)) {
+            isRowDisabled = true;
+          }
         }
 
         const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
@@ -317,18 +422,24 @@ export function exportToPdf({
 
         let displayInicio = "-";
         let displayFim = "-";
-
-        if (!isRowDisabled && !isFieldDeactivated) {
-          displayInicio = formatDate(row.inicio);
-          displayFim = row.fim && row.fim !== "-" ? formatDate(row.fim) : "-";
-        }
-
         let manualInicio = "-";
         let manualFim = "-";
 
         if (!isRowDisabled && !isFieldDeactivated) {
-          manualInicio = (datasManuaisExtras[row.celula]?.inicio || row.inicio) ? formatDate(datasManuaisExtras[row.celula]?.inicio || row.inicio) : "-";
-          manualFim = (row.fim && row.fim !== "-") ? formatDate(datasManuaisExtras[row.celula]?.fim || row.fim) : "-";
+          displayInicio = (row.inicio && row.inicio !== "1889-01-01") ? formatDate(row.inicio) : "-";
+          displayFim = row.fim && row.fim !== "-" && row.fim !== "1889-01-01" ? formatDate(row.fim) : "-";
+
+          const mInicioVal = (datasManuaisExtras && datasManuaisExtras[row.celula]?.inicio) || (row.celula === "B21" ? b21ManualInicio : "");
+          manualInicio = (mInicioVal && mInicioVal !== "1889-01-01") ? formatDate(mInicioVal) : "-";
+
+          let mFimVal = (datasManuaisExtras && datasManuaisExtras[row.celula]?.fim) || row.fim;
+          if (row.celula === "B21") {
+            const sidebarManual = (datasManuaisPrincipal && (datasManuaisPrincipal["C10"] || datasManuaisPrincipal["E12"]));
+            if (sidebarManual && sidebarManual !== "1889-01-01") {
+              mFimVal = sidebarManual;
+            }
+          }
+          manualFim = (mFimVal && mFimVal !== "-" && mFimVal !== "1889-01-01") ? formatDate(mFimVal) : "-";
         }
 
         const codOrdem = COD_ORDEM_MAP[row.celula] || "-";
@@ -412,7 +523,7 @@ export function exportToPdf({
       headerCaed.push("DATA INÍCIO (MANUAL)", "DATA FIM (MANUAL)");
     }
 
-    const cCells = ["C4", "C5", "C6", "C7", "C8", "C10"];
+    const cCells = ["C4", "C5", "C6", "C7", "C8"];
     const allCaedItems = [
       ...cCells.map(cel => ({ isC: true as const, celula: cel, rowData: null as any })),
       ...datasExtras.map(row => ({ isC: false as const, celula: row.celula, rowData: row }))
@@ -428,8 +539,7 @@ export function exportToPdf({
           id === "C5" ? "Disponibilização dos itens de escrita antecipados" :
           id === "C6" ? "Geração e validação dos arquivos de dados variáveis (DVs)" :
           id === "C7" ? "Disponibilização dos cadernos de testes" :
-          id === "C8" ? "Homologação dos arquivos de DVs" :
-          id === "C10" ? "Entrega dos materiais nos polos até:" : "";
+          id === "C8" ? "Homologação dos arquivos de DVs" : "";
 
         let displayInicio = "-";
         let displayFim = "-";
@@ -462,11 +572,6 @@ export function exportToPdf({
             displayFim = formatDate(calculosCaed.c8);
             manualInicio = formatDate(datasManuaisPrincipal["C8_inicio"] || calculosCaed.c8_inicio || calculosCaed.c8);
             manualFim = formatDate(datasManuaisPrincipal["C8"] || calculosCaed.c8);
-          } else if (id === "C10") {
-            displayInicio = formatDate(calculosCaed.entregaPolos);
-            displayFim = formatDate(calculosCaed.entregaPolos);
-            manualInicio = formatDate(datasManuaisPrincipal["C10"] || calculosCaed.entregaPolos);
-            manualFim = formatDate(datasManuaisPrincipal["C10"] || calculosCaed.entregaPolos);
           }
         }
 
@@ -492,6 +597,18 @@ export function exportToPdf({
           if (row.isMaterialImpresso && !possuiMaterialImpresso) {
             isRowDisabled = true;
           }
+          if ((row.celula === "B6" || row.celula === "B7" || row.celula === "B22") && (!b5ManualInicio || b5ManualInicio === "1889-01-01")) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B17" && !possuiBraile) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B18" && !(possuiConsorcio && possuiAdLibras)) {
+            isRowDisabled = true;
+          }
+          if (row.celula === "B19" && !(possuiBraile || possuiAdLibras)) {
+            isRowDisabled = true;
+          }
         }
 
         const dependenteInativoB26 = row.dependenteB26 && desativadosOpcionais.B26;
@@ -502,8 +619,8 @@ export function exportToPdf({
         let displayFim: any = "-";
 
         if (!isRowDisabled && !isFieldDeactivated) {
-          displayInicio = formatDate(row.inicio);
-          displayFim = row.fim && row.fim !== "-" ? formatDate(row.fim) : "-";
+          displayInicio = (row.inicio && row.inicio !== "1889-01-01") ? formatDate(row.inicio) : "-";
+          displayFim = row.fim && row.fim !== "-" && row.fim !== "1889-01-01" ? formatDate(row.fim) : "-";
         } else {
           displayInicio = { content: "-", styles: { textColor: [160, 174, 192] } };
           displayFim = { content: "-", styles: { textColor: [160, 174, 192] } };
@@ -513,8 +630,17 @@ export function exportToPdf({
         let manualFim: any = "-";
 
         if (!isRowDisabled && !isFieldDeactivated) {
-          manualInicio = (datasManuaisExtras[row.celula]?.inicio || row.inicio) ? formatDate(datasManuaisExtras[row.celula]?.inicio || row.inicio) : "-";
-          manualFim = (row.fim && row.fim !== "-") ? formatDate(datasManuaisExtras[row.celula]?.fim || row.fim) : "-";
+          const mInicioVal = (datasManuaisExtras && datasManuaisExtras[row.celula]?.inicio) || (row.celula === "B21" ? b21ManualInicio : "");
+          manualInicio = (mInicioVal && mInicioVal !== "1889-01-01") ? formatDate(mInicioVal) : "-";
+
+          let mFimVal = (datasManuaisExtras && datasManuaisExtras[row.celula]?.fim) || row.fim;
+          if (row.celula === "B21") {
+            const sidebarManual = (datasManuaisPrincipal && (datasManuaisPrincipal["C10"] || datasManuaisPrincipal["E12"]));
+            if (sidebarManual && sidebarManual !== "1889-01-01") {
+              mFimVal = sidebarManual;
+            }
+          }
+          manualFim = (mFimVal && mFimVal !== "-" && mFimVal !== "1889-01-01") ? formatDate(mFimVal) : "-";
         } else {
           manualInicio = { content: "-", styles: { textColor: [160, 174, 192] } };
           manualFim = { content: "-", styles: { textColor: [160, 174, 192] } };
@@ -617,6 +743,18 @@ export function exportToPdf({
           isRowDisabled = true;
         }
         if (row.isMaterialImpresso && !possuiMaterialImpresso) {
+          isRowDisabled = true;
+        }
+        if ((row.celula === "B6" || row.celula === "B7" || row.celula === "B22") && (!b5ManualInicio || b5ManualInicio === "1889-01-01")) {
+          isRowDisabled = true;
+        }
+        if (row.celula === "B17" && !possuiBraile) {
+          isRowDisabled = true;
+        }
+        if (row.celula === "B18" && !(possuiConsorcio && possuiAdLibras)) {
+          isRowDisabled = true;
+        }
+        if (row.celula === "B19" && !(possuiBraile || possuiAdLibras)) {
           isRowDisabled = true;
         }
       }
